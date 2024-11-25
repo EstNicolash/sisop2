@@ -16,18 +16,15 @@ extern Client manage_clients_connections[MAX_CLIENTS];
 extern int client_count;
 extern pthread_mutex_t manage_clients_mutex;
 
-int server_handles_client_download(int sockfd,
-                                   const char user_id[MAX_PAYLOAD_SIZE]);
-int server_handles_client_upload(int sockfd,
-                                 const char user_id[MAX_PAYLOAD_SIZE]);
-int server_handles_client_list_server(int sockfd,
-                                      const char user_id[MAX_PAYLOAD_SIZE]);
-int server_handles_client_id(int sockfd, char user_id[MAX_PAYLOAD_SIZE]);
-int server_handles_client_delete(int sockfd,
-                                 const char user_id[MAX_PAYLOAD_SIZE]);
-int server_handles_client_get_sync_dir(int sockfd,
-                                       const char user_id[MAX_PAYLOAD_SIZE]);
-bool update_connection_count(int sockfd, const char user_id[MAX_PAYLOAD_SIZE],
+int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
+int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
+int server_handles_list_server(int sockfd,
+                               const char user_id[MAX_FILENAME_SIZE]);
+int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]);
+int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
+int server_handles_get_sync_dir(int sockfd,
+                                const char user_id[MAX_FILENAME_SIZE]);
+bool update_connection_count(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                              int client_num);
 
 #endif
