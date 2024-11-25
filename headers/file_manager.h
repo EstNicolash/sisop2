@@ -18,10 +18,12 @@ typedef struct FileInfo {
 int create_directory(const char dir_name[MAX_FILENAME_SIZE]);
 
 // Save a char stream as a file in the specified directory
-int save_file(const char dir_name[MAX_FILENAME_SIZE], char *file_buffer);
+int save_file(const char file_name[MAX_FILENAME_SIZE],
+              const char dir_name[MAX_FILENAME_SIZE], char *file_buffer,
+              size_t buffer_size);
 
 // Load a file as a char stream and return the stream
-char *load_file(const char file_name[MAX_FILENAME_SIZE]);
+char *load_file(const char file_name[MAX_FILENAME_SIZE], size_t *file_size);
 
 // Delete a file
 int delete_file(const char file_name[MAX_FILENAME_SIZE]);

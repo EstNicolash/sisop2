@@ -5,8 +5,8 @@
 #include <stdint.h>
 #define MAX_PAYLOAD_SIZE 4096
 
-#define ERROR 0
-#define OK 1
+#define OK 0
+#define ERROR 1
 
 #define SEND 10
 #define RECEIVE 11
