@@ -1,7 +1,16 @@
 #ifndef SERVER_HANDLER_H
 #define SERVER_HANDLER_H
 #include "protocol.h"
+#include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define MAX_CONNECTIONS_PER_CLIENT 2
 #define MAX_CLIENTS 1000

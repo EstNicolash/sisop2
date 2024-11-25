@@ -46,7 +46,6 @@ int main(int argc, char *argv[]) {
 
   sockfd = client_connect(server_ip, port);
   if (sockfd < 0) {
-    fprintf(stderr, "Invalid socket\n");
     exit(0);
   }
   //
