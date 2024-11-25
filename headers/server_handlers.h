@@ -24,7 +24,7 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]);
 int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
 int server_handles_get_sync_dir(int sockfd,
                                 const char user_id[MAX_FILENAME_SIZE]);
-bool update_connection_count(int sockfd, const char user_id[MAX_FILENAME_SIZE],
-                             int client_num);
+int update_connection_count(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                            int client_num);
 
 #endif
