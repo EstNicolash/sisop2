@@ -85,13 +85,13 @@ void *client_handler(void *arg) {
   printf("Client identified: %s\n", user_id);
 
   // Check and update connection count for this client
-  if (!update_connection_count(sockfd, user_id, 1)) {
-    printf("Client %s has reached the maximum connection limit. Closing "
-           "connection.\n",
-           user_id);
-    close(sockfd);
-    return NULL;
-  }
+  // if (!update_connection_count(sockfd, user_id, 1)) {
+  //  printf("Client %s has reached the maximum connection limit. Closing "
+  //         "connection.\n",
+  //         user_id);
+  //  close(sockfd);
+  //  return NULL;
+  //}
   while (true)
     ;
 

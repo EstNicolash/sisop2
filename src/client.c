@@ -1,3 +1,4 @@
+#include "../headers/client_commands.h"
 #include "../headers/file_manager.h"
 #include <arpa/inet.h>  // For inet_pton, htons, sockaddr_in
 #include <netinet/in.h> // For sockaddr_in
@@ -9,7 +10,7 @@
 #include <sys/socket.h> // For socket, connect, AF_INET, SOCK_STREAM
 #include <unistd.h>     // For close
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 
 #define DOWNLOAD_STR "download"
 #define UPLOAD_STR "upload"
@@ -48,11 +49,11 @@ int main(int argc, char *argv[]) {
   if (sockfd < 0) {
     exit(0);
   }
-  //
-  // if (client_send_id(sockfd, client_id) != 0) {
-  // close(sockfd);
-  //  pthread_exit(NULL);
-  // }
+
+  if (client_send_id(sockfd, client_id) != 0) {
+    close(sockfd);
+    exit(0);
+  }
 
   // create_sync_directory();
   // get_sync_dir(sockfd, "sync_dir");
