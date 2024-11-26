@@ -107,7 +107,7 @@ void *client_handler(void *arg) {
 
     switch (received_packet.type) {
     case C_LIST_SERVER:
-      // server_handles_client_list_server(sockfd, user_id);
+      server_handles_list_server(sockfd, user_id);
       break;
 
     case C_UPLOAD:
@@ -119,7 +119,7 @@ void *client_handler(void *arg) {
       break;
 
     case C_GET_SYNC_DIR:
-      // server_handles_client_get_sync_dir(sockfd, user_id);
+      printf("Sync Request: %s\n", user_id);
       break;
 
     case C_DELETE:

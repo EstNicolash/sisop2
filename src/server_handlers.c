@@ -43,7 +43,6 @@ int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
-
   char file_path[MAX_PAYLOAD_SIZE * 2];
   snprintf(file_path, sizeof(file_path), "%s/%s", user_id, rcv_pkt._payload);
 
@@ -63,6 +62,12 @@ int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
   }
 
   return send_file(sockfd, file_path);
+}
+
+int server_handles_list_server(int sockfd,
+                               const char user_id[MAX_FILENAME_SIZE]) {
+
+  return send_file_list(sockfd, user_id);
 }
 
 int update_connection_count(const char *user_id, int delta) {

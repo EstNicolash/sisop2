@@ -79,11 +79,32 @@ int client_list_client(int sockfd) {
   const char path[MAX_FILENAME_SIZE] = SYNC_DIR;
   FileInfo *files = list_files(path, &file_count);
   print_file_list(files, file_count);
+  free(files);
 
   return 0;
 }
 
-int client_list_server(int sockfd) { return 0; }
+int client_list_server(int sockfd) {
+  packet msg_pkt = create_packet(C_LIST_SERVER, 0, 0, "ok", 2);
+
+  if (send_message(sockfd, msg_pkt)) {
+    perror("Fail sending list_server\n");
+    return -1;
+  }
+
+  int file_count = 0;
+  FileInfo *files = receive_file_list(sockfd, &file_count);
+
+  if (files == NULL) {
+    perror("error receiving files list from server\n");
+    return -1;
+  }
+
+  print_file_list(files, file_count);
+  free(files);
+
+  return 0;
+}
 
 int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
   return 0;

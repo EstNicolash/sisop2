@@ -197,3 +197,114 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
 
   return file_data;
 }
+
+int send_file_list(int sockfd, const char dir[MAX_FILENAME_SIZE]) {
+  int file_count = 0;
+  FileInfo *files = list_files(dir, &file_count);
+
+  packet num_pkt = create_packet(OK, C_LIST_SERVER, file_count, "ok", 2);
+
+  if (send_message(sockfd, num_pkt) != 0) {
+    perror("Filed send num_pkt\n");
+    return -1;
+  }
+
+  uint16_t seqn = 1;
+  for (int i = 0; i < file_count; i++) {
+    packet pkt = create_packet(C_LIST_SERVER, seqn, file_count, "ok", 2);
+
+    memcpy(pkt._payload, &files[i], sizeof(FileInfo));
+    pkt.length = sizeof(FileInfo);
+
+    if (send_message(sockfd, pkt) != 0) {
+      perror("Failed send pkt\n");
+      return -1;
+    }
+
+    seqn++;
+  }
+
+  // Ensure EOF packet is properly sent and handled
+  packet eof_pkt = create_packet(END_OF_FILE, seqn, file_count, "eof", 3);
+  if (send_message(sockfd, eof_pkt) != 0) {
+    perror("Send failed during EOF transfer");
+    free(files);
+    return -1;
+  }
+
+  // Wait for acknowledgment from the server
+  packet ack_pkt;
+  if (rcv_message(sockfd, OK, END_OF_FILE, &ack_pkt) != 0) {
+    perror("Failed to receive acknowledgment for EOF");
+    free(files);
+    return -1;
+  }
+
+  free(files);
+  return 0;
+}
+
+FileInfo *receive_file_list(int socket, int *file_count) {
+  if (!file_count) {
+    fprintf(stderr, "Invalid file_count pointer\n");
+    return NULL;
+  }
+
+  // Receive the number of files
+  packet num_pkt;
+  if (rcv_message(socket, OK, C_LIST_SERVER, &num_pkt) != 0) {
+    perror("Failed to receive number of files");
+    return NULL;
+  }
+
+  *file_count = num_pkt.total_size;
+  if (*file_count < 0) {
+    fprintf(stderr, "Invalid file count received: %d\n", *file_count);
+    return NULL;
+  }
+
+  FileInfo *files = malloc(sizeof(FileInfo) * (*file_count));
+  if (!files) {
+    perror("Failed to allocate memory for file list");
+    return NULL;
+  }
+
+  uint32_t received_files = 0;
+  uint16_t seqn = 1;
+  while (received_files < *file_count) {
+    packet file_pkt;
+    if (rcv_message(socket, C_LIST_SERVER, seqn, &file_pkt) != 0) {
+      perror("Failed to receive file packet");
+      free(files);
+      return NULL;
+    }
+
+    if (file_pkt.length != sizeof(FileInfo)) {
+      fprintf(stderr, "Unexpected packet length: %u\n", file_pkt.length);
+      free(files);
+      return NULL;
+    }
+
+    memcpy(&files[received_files], file_pkt._payload, sizeof(FileInfo));
+    received_files++;
+    seqn++;
+  }
+
+  // Receive the EOF packet
+  packet eof_pkt;
+  if (rcv_message(socket, END_OF_FILE, seqn, &eof_pkt) != 0) {
+    perror("Failed to receive EOF packet");
+    free(files);
+    return NULL;
+  }
+
+  // Send acknowledgment for EOF
+  packet ack_pkt = create_packet(OK, END_OF_FILE, *file_count, "ack", 3);
+  if (send_message(socket, ack_pkt) != 0) {
+    perror("Failed to send acknowledgment for EOF");
+    free(files);
+    return NULL;
+  }
+
+  return files;
+}
