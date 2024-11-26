@@ -3,6 +3,7 @@
 #include <arpa/inet.h>  // For inet_pton, htons, sockaddr_in
 #include <netinet/in.h> // For sockaddr_in
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdio.h>      // For printf, perror
 #include <stdlib.h>     // For exit
@@ -20,8 +21,12 @@
 #define GET_SYNC_DIR_STR "get_sync_dir"
 #define EXIT_STR "exit"
 
+int sync_active = 1;
+pthread_mutex_t client_sync_mutex; // Mutex for synchronization
+void handle_signal(int signal);
 int client_connect(const char *server_ip, int port);
-// void start_sync_monitoring(const char *sync_dir, int socket_fd);
+void *sync_thread_function(void *arg);
+
 int main(int argc, char *argv[]) {
   int sockfd;
   char buffer[BUFFER_SIZE];
@@ -58,8 +63,22 @@ int main(int argc, char *argv[]) {
   const char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
   create_directory(dir);
 
-  // get_sync_dir(sockfd, "sync_dir");
-  // start_sync_monitoring("sync_dir", sockfd);
+  // Initialize the mutex
+  pthread_mutex_init(&client_sync_mutex, NULL);
+
+  // Register signal handler
+  signal(SIGINT, handle_signal);
+  signal(SIGTERM, handle_signal);
+
+  // Create the sync thread
+  pthread_t sync_thread;
+
+  if (pthread_create(&sync_thread, NULL, sync_thread_function, &sockfd) != 0) {
+    perror("Failed to create sync thread");
+    close(sockfd);
+    pthread_mutex_destroy(&client_sync_mutex);
+    return EXIT_FAILURE;
+  }
 
   while (1) {
     printf("Enter the message: \n");
@@ -71,7 +90,7 @@ int main(int argc, char *argv[]) {
     char *command = strtok(buffer, " ");
     char *filename = strtok(NULL, " ");
 
-    //  pthread_mutex_lock(&client_sync_mutex);
+    pthread_mutex_lock(&client_sync_mutex);
     if (command && filename) {
       if (strcmp(command, DOWNLOAD_STR) == 0) {
         char cwd[MAX_FILENAME_SIZE];
@@ -97,36 +116,41 @@ int main(int argc, char *argv[]) {
         get_sync_dir(sockfd);
       } else if (strcmp(command, EXIT_STR) == 0) {
         client_exit(sockfd);
-        goto end;
+        sync_active = 0;
         break;
       }
     }
-
-    //    pthread_mutex_unlock(&client_sync_mutex);
+    pthread_mutex_unlock(&client_sync_mutex);
   }
-end:
+  if (pthread_join(sync_thread, NULL) != 0) {
+    perror("Failed to join sync thread");
+  }
+  pthread_mutex_destroy(&client_sync_mutex);
   close(sockfd);
   printf("Client stop\n");
   return 0;
 }
-/*
-  void start_sync_monitoring(const char *sync_dir, int socket_fd) {
-    pthread_t sync_thread;
-
-    sync_monitor_args *args = malloc(sizeof(sync_monitor_args));
-    args->sync_dir = sync_dir;
-    args->socket_fd = socket_fd;
-
-    if (pthread_create(&sync_thread, NULL, monitor_sync_dir_thread,
-                       (void *)args) != 0) {
-      perror("Error creating sync monitor thread");
-      free(args);
-      return;
+void handle_signal(int signal) {
+  if (signal == SIGINT || signal == SIGTERM) {
+    printf("Signal received. Stopping sync thread...\n");
+    sync_active = 0; // Signal the thread to stop
+  }
+}
+// Thread function to periodically sync directories
+void *sync_thread_function(void *arg) {
+  int sockfd = *(int *)arg;
+  while (sync_active) {
+    pthread_mutex_lock(&client_sync_mutex);
+    // printf("Starting sync...\n");
+    if (get_sync_dir(sockfd) != 0) {
+      fprintf(stderr, "Error syncing directories\n");
     }
-
-    pthread_detach(sync_thread);
-  }*/
-
+    pthread_mutex_unlock(&client_sync_mutex);
+    sleep(3);
+  }
+  printf("Sync thread exiting...\n");
+  return NULL;
+}
 int client_connect(const char *server_ip, int port) {
   int sockfd;
   struct sockaddr_in serv_addr;
