@@ -4,7 +4,7 @@
 int server_setup(int port);
 int server_accept_client(int sockfd);
 void *client_handler(void *arg);
-#define PORT 55555
+#define PORT 48487
 int main() {
   int server_fd = server_setup(PORT);
 
@@ -86,6 +86,8 @@ void *client_handler(void *arg) {
 
   printf("Client identified: %s\n", user_id);
 
+  create_directory(user_id);
+
   // Check and update connection count for this client
   if (update_connection_count(user_id, 1) != 0) {
     printf("Client %s has reached the maximum connection limit. Closing "
@@ -126,11 +128,13 @@ void *client_handler(void *arg) {
 
     default:
       printf("Unknown command type: %d\n", received_packet.type);
+      goto end;
       break;
     }
   }
+end:
 
-  update_connection_count(sockfd, user_id, -1);
+  update_connection_count(user_id, -1);
 
   close(sockfd);
   printf("Connection with client %s closed.\n", user_id);

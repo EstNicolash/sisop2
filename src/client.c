@@ -51,11 +51,12 @@ int main(int argc, char *argv[]) {
   }
 
   if (client_send_id(sockfd, client_id) != 0) {
+    fprintf(stderr, "Error sending ID\n");
     close(sockfd);
     exit(0);
   }
-
-  create_directory(SYNC_DIR);
+  const char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
+  create_directory(dir);
 
   // get_sync_dir(sockfd, "sync_dir");
   // start_sync_monitoring("sync_dir", sockfd);

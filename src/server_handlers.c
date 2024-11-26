@@ -1,4 +1,5 @@
 #include "../headers/server_handlers.h"
+#include <stdint.h>
 #include <string.h>
 
 Client manage_clients_connections[MAX_CLIENTS] = {0};
@@ -14,17 +15,19 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
 
   strncpy(user_id, rcv_pkt._payload, MAX_FILENAME_SIZE);
 
-  packet pkt = create_packet(OK, 0, 0, "ok");
+  packet pkt = create_packet(OK, 0, 0, "ok", 2);
   send_message(sockfd, pkt);
   return 1;
 }
 
 int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
-  packet ack = create_packet(OK, 0, 0, "ok");
+  packet ack = create_packet(OK, C_UPLOAD, 0, "ok", 2);
+  send_message(sockfd, ack);
   FileInfo metadada;
-  char *file_buffer = receive_file(sockfd, &metadada);
+  uint32_t size = 0;
+  char *file_buffer = receive_file(sockfd, &size, &metadada);
 
-  save_file(metadada.filename, user_id, file_buffer, metadada.file_size);
+  save_file(metadada.filename, user_id, file_buffer, size);
 
   return 1;
 }

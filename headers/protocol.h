@@ -34,7 +34,7 @@ typedef struct packet {
 } packet;
 
 packet create_packet(uint16_t type, uint16_t seqn, uint32_t total_size,
-                     const char *_payload);
+                     const void *payload, size_t payload_length);
 
 int send_message(int sockfd, packet pkt);
 
@@ -43,7 +43,7 @@ int send_message(int sockfd, packet pkt);
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt);
 
 int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]);
-char *receive_file(int sockfd, FileInfo *fileinfo);
+char *receive_file(int sockfd, uint32_t *out_total_size, FileInfo *fileinfo);
 int send_file_list(int sockfd, const char file_name[MAX_FILENAME_SIZE]);
 FileInfo *receive_file_list(int socket, int *file_count);
 
