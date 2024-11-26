@@ -79,12 +79,13 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }*/
   pthread_t sync_thread;
-  /*
-    if (pthread_create(&sync_thread, NULL, sync_thread_function, &sockfd) != 0)
-    { perror("Failed to create sync thread"); close(sockfd);
-      pthread_mutex_destroy(&client_sync_mutex);
-      return EXIT_FAILURE;
-    }*/
+
+  if (pthread_create(&sync_thread, NULL, sync_thread_function, &sockfd) != 0) {
+    perror("Failed to create sync thread");
+    close(sockfd);
+    pthread_mutex_destroy(&client_sync_mutex);
+    return EXIT_FAILURE;
+  }
   while (1) {
     printf("Enter the message: \n");
     bzero(buffer, BUFFER_SIZE);
@@ -127,9 +128,9 @@ int main(int argc, char *argv[]) {
     }
     pthread_mutex_unlock(&client_sync_mutex);
   }
-  // if (pthread_join(sync_thread, NULL) != 0) {
-  //   perror("Failed to join sync thread");
-  // }
+  if (pthread_join(sync_thread, NULL) != 0) {
+    perror("Failed to join sync thread");
+  }
   pthread_mutex_destroy(&client_sync_mutex);
   close(sockfd);
   printf("Client stop\n");
