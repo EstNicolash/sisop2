@@ -74,17 +74,25 @@ int main(int argc, char *argv[]) {
     //  pthread_mutex_lock(&client_sync_mutex);
     if (command && filename) {
       if (strcmp(command, DOWNLOAD_STR) == 0) {
-        // client_download_file(sockfd, filename);
+        char cwd[MAX_FILENAME_SIZE];
+
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+          printf("Current working directory: %s\n", cwd);
+        } else {
+          perror("getcwd() error");
+        }
+        client_download_file(sockfd, filename, cwd);
+
       } else if (strcmp(command, UPLOAD_STR) == 0) {
         client_upload_file(sockfd, filename);
       } else if (strcmp(command, DELETE_STR) == 0) {
-        // client_delete_file(sockfd, filename);
+        client_delete_file(sockfd, filename);
       }
     } else if (command) {
       if (strcmp(command, LIST_CLIENT_STR) == 0) {
-        // client_list_client(sockfd);
+        client_list_client(sockfd);
       } else if (strcmp(command, LIST_SERVER_STR) == 0) {
-        // client_list_server(sockfd);
+        client_list_server(sockfd);
       } else if (strcmp(command, GET_SYNC_DIR_STR) == 0) {
         // get_sync_dir(sockfd, "sync_dir");
       } else if (strcmp(command, EXIT_STR) == 0) {

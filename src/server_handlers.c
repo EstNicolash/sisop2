@@ -1,5 +1,6 @@
 #include "../headers/server_handlers.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 Client manage_clients_connections[MAX_CLIENTS] = {0};
@@ -29,7 +30,39 @@ int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
 
   save_file(metadada.filename, user_id, file_buffer, size);
 
+  free(file_buffer);
+
   return 1;
+}
+
+int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
+
+  packet rcv_pkt;
+  if (rcv_message(sockfd, C_DOWNLOAD, 1, &rcv_pkt) != 0) {
+    perror("Error receiving filename\n");
+    return -1;
+  }
+
+
+  char file_path[MAX_PAYLOAD_SIZE * 2];
+  snprintf(file_path, sizeof(file_path), "%s/%s", user_id, rcv_pkt._payload);
+
+  if (file_exists(file_path) != 0) {
+    perror("File doesn't exist\n");
+
+    packet error_pkt = create_packet(ERROR, 0, 0, "no", 2);
+    send_message(sockfd, error_pkt);
+    return -1;
+  }
+
+  packet ack_pkt = create_packet(OK, C_DOWNLOAD, 0, "ok", 2);
+
+  if (send_message(sockfd, ack_pkt) != 0) {
+    perror("Error sendinck ack\n");
+    return -1;
+  }
+
+  return send_file(sockfd, file_path);
 }
 
 int update_connection_count(const char *user_id, int delta) {

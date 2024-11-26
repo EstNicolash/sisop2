@@ -115,7 +115,7 @@ void *client_handler(void *arg) {
       break;
 
     case C_DOWNLOAD:
-      // server_handles_client_download(sockfd, user_id, &received_packet);
+      server_handles_download(sockfd, user_id);
       break;
 
     case C_GET_SYNC_DIR:

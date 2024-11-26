@@ -1,6 +1,6 @@
 #include "../headers/protocol.h"
+#include <libgen.h>
 #include <stdint.h>
-
 packet create_packet(uint16_t type, uint16_t seqn, uint32_t total_size,
                      const void *_payload, size_t payload_size) {
   packet pkt;
@@ -63,6 +63,8 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
 
   FileInfo file_info = get_file_info(file_name);
   file_info.file_size = total_size;
+  char *base_name = basename(file_info.filename);
+  strncpy(file_info.filename, base_name, MAX_FILENAME_SIZE);
 
   packet metadata_pkt = create_packet(METADATA, 0, total_size, "file", 4);
   memcpy(metadata_pkt._payload, &file_info, sizeof(FileInfo));

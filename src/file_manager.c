@@ -12,6 +12,15 @@ int create_directory(const char dir_name[MAX_FILENAME_SIZE]) {
   return mkdir(dir_name, 0755);
 }
 
+int file_exists(const char filename[MAX_FILENAME_SIZE]) {
+  FILE *file = fopen(filename, "r");
+  if (file) {
+    fclose(file);
+    return 0;
+  }
+  return -1;
+}
+
 int save_file(const char file_name[MAX_FILENAME_SIZE],
               const char dir_name[MAX_FILENAME_SIZE], char *file_buffer,
               size_t buffer_size) {
