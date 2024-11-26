@@ -139,7 +139,7 @@ void handle_signal(int signal) {
 // Thread function to periodically sync directories
 void *sync_thread_function(void *arg) {
   int sockfd = *(int *)arg;
-  while (sync_active) {
+  while (sync_active == 1) {
     pthread_mutex_lock(&client_sync_mutex);
     // printf("Starting sync...\n");
     if (get_sync_dir(sockfd) != 0) {

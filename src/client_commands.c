@@ -38,7 +38,7 @@ int client_upload_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
     fprintf(stderr, "Error rcv ack in upload\n");
     return -1;
   };
-  printf("send\n");
+  // printf("send\n");
   return send_file(sockfd, filename);
 }
 
@@ -59,8 +59,8 @@ int client_download_file(int sockfd, char filename[MAX_FILENAME_SIZE],
     return -1;
   };
 
-  printf("waiting ack\n");
-  // ACK
+  // printf("waiting ack\n");
+  //  ACK
   if (rcv_message(sockfd, OK, C_DOWNLOAD, &download_msg) != 0) {
     fprintf(stderr, "Error rcv ack download or file doesn't exist \n");
     return -1;
@@ -150,7 +150,7 @@ int get_sync_dir(int sockfd) {
     return -1;
   }
 
-  printf("Sync Dir acked\n");
+  // printf("Sync Dir acked\n");
 
   // Local file LISt
   int local_file_count = 0;
