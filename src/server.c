@@ -1,4 +1,5 @@
 #include "../headers/server_handlers.h"
+#include <unistd.h>
 
 int server_setup(int port);
 int server_accept_client(int sockfd);
@@ -93,54 +94,43 @@ void *client_handler(void *arg) {
     close(sockfd);
     return NULL;
   }
-  while (true)
-    ;
 
-  /*
-  create_user_directory(user_id);
+  while (1) {
 
-  while (true) {
-    memset(&received_packet, 0, sizeof(received_packet));
-    ssize_t bytes_read =
-        read(sockfd, &received_packet, sizeof(received_packet));
-    if (bytes_read <= 0) {
-      if (bytes_read < 0)
-        perror("Error reading from client socket");
-      printf("Client %s disconnected.\n", user_id);
-      break;
-    }
+    packet received_packet;
+    read(sockfd, &received_packet, sizeof(received_packet));
 
     printf("Received request from client %s (type: %d):\n", user_id,
            received_packet.type);
 
     switch (received_packet.type) {
-    case CMD_LIST_SERVER:
-      server_handles_client_list_server(sockfd, user_id);
+    case C_LIST_SERVER:
+      // server_handles_client_list_server(sockfd, user_id);
       break;
 
-    case CMD_UPLOAD:
-      server_handles_client_upload(sockfd, user_id, &received_packet);
+    case C_UPLOAD:
+      server_handles_upload(sockfd, user_id);
       break;
 
-    case CMD_DOWNLOAD:
-      server_handles_client_download(sockfd, user_id, &received_packet);
+    case C_DOWNLOAD:
+      // server_handles_client_download(sockfd, user_id, &received_packet);
       break;
 
-    case CMD_GET_SYNC_DIR:
-      server_handles_client_get_sync_dir(sockfd, user_id);
+    case C_GET_SYNC_DIR:
+      // server_handles_client_get_sync_dir(sockfd, user_id);
       break;
 
-    case CMD_DELETE:
-      server_handles_client_delete(sockfd, user_id, &received_packet);
+    case C_DELETE:
+      // server_handles_client_delete(sockfd, user_id, &received_packet);
       break;
 
     default:
       printf("Unknown command type: %d\n", received_packet.type);
       break;
     }
-  }*/
+  }
 
-  // update_connection_count(sockfd, user_id, -1);
+  update_connection_count(sockfd, user_id, -1);
 
   close(sockfd);
   printf("Connection with client %s closed.\n", user_id);

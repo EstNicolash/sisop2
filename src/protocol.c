@@ -86,7 +86,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     packet data_pkt = create_packet(SEND, (uint16_t)seq, total_fragments,
                                     &file_buffer[offset]);
 
-    if (send_message(sockfd, data_pkt) < 0) {
+    if (send_message(sockfd, data_pkt) != 0) {
       fprintf(stderr, "Failed to send fragment %u\n", seq);
       free(file_buffer);
       return -1;

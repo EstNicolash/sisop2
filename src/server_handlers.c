@@ -19,6 +19,16 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
   return 1;
 }
 
+int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
+  packet ack = create_packet(OK, 0, 0, "ok");
+  FileInfo metadada;
+  char *file_buffer = receive_file(sockfd, &metadada);
+
+  save_file(metadada.filename, user_id, file_buffer, metadada.file_size);
+
+  return 1;
+}
+
 int update_connection_count(const char *user_id, int delta) {
   pthread_mutex_lock(&manage_clients_mutex);
 
