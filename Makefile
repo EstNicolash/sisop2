@@ -1,7 +1,7 @@
 CC = gcc
 
 # Bibliotecas
-LIBS = -lpthread
+LIBS = -pthread
 FLAGS = -Wall
 # Diretórios
 SRC = ./src/

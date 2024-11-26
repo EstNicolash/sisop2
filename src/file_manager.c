@@ -20,12 +20,20 @@ int file_exists(const char filename[MAX_FILENAME_SIZE]) {
   }
   return -1;
 }
-
 int save_file(const char file_name[MAX_FILENAME_SIZE],
               const char dir_name[MAX_FILENAME_SIZE], char *file_buffer,
               size_t buffer_size) {
   char file_path[MAX_FILENAME_SIZE * 2];
   snprintf(file_path, sizeof(file_path), "%s/%s", dir_name, file_name);
+
+  // Ensure directory exists
+  struct stat st;
+  if (stat(dir_name, &st) == -1) {
+    if (mkdir(dir_name, 0755) == -1) {
+      perror("Failed to create directory");
+      return -1;
+    }
+  }
 
   int fd = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd == -1) {
@@ -33,50 +41,24 @@ int save_file(const char file_name[MAX_FILENAME_SIZE],
     return -1;
   }
 
-  ssize_t bytes_written = write(fd, file_buffer, buffer_size);
-  if (bytes_written == -1 || (size_t)bytes_written != buffer_size) {
-    perror("Failed to write to file");
-    close(fd);
-    return -1;
+  // Write file in a loop to ensure all data is written
+  size_t total_written = 0;
+  while (total_written < buffer_size) {
+    ssize_t bytes_written =
+        write(fd, file_buffer + total_written, buffer_size - total_written);
+    if (bytes_written == -1) {
+      perror("Failed to write to file");
+      close(fd);
+      return -1;
+    }
+    total_written += bytes_written;
   }
 
   close(fd);
+
+  //    printf("File saved successfully: %s (size: %zu bytes)\n", file_path,
+  //    buffer_size);
   return 0;
-}
-
-char *load_file(const char file_name[MAX_FILENAME_SIZE], size_t *file_size) {
-  int fd = open(file_name, O_RDONLY);
-  if (fd == -1) {
-    perror("Failed to open file for reading");
-    return NULL;
-  }
-
-  struct stat st;
-  if (fstat(fd, &st) == -1) {
-    perror("Failed to get file size");
-    close(fd);
-    return NULL;
-  }
-
-  *file_size = st.st_size;
-
-  char *buffer = malloc(*file_size);
-  if (!buffer) {
-    perror("Failed to allocate memory for file");
-    close(fd);
-    return NULL;
-  }
-
-  ssize_t bytes_read = read(fd, buffer, *file_size);
-  if (bytes_read == -1 || (size_t)bytes_read != *file_size) {
-    perror("Failed to read file");
-    free(buffer);
-    close(fd);
-    return NULL;
-  }
-
-  close(fd);
-  return buffer;
 }
 
 int delete_file(const char file_name[MAX_FILENAME_SIZE]) {

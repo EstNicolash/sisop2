@@ -1,6 +1,10 @@
 #include "../headers/protocol.h"
+#include <fcntl.h>
 #include <libgen.h>
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 packet create_packet(uint16_t type, uint16_t seqn, uint32_t total_size,
                      const void *_payload, size_t payload_size) {
   packet pkt;
@@ -17,47 +21,58 @@ packet create_packet(uint16_t type, uint16_t seqn, uint32_t total_size,
 }
 
 int send_message(int sockfd, packet pkt) {
-  ssize_t bytes_sent = write(sockfd, &pkt, sizeof(pkt));
-  if (bytes_sent != sizeof(pkt)) {
+  ssize_t bytes_sent = write(sockfd, &pkt, sizeof(packet));
+  if (bytes_sent != sizeof(packet)) {
     perror("Failed to send packet");
     return -1;
   }
   return 0;
 }
-
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
-
   ssize_t bytes_received = read(sockfd, rcv_pkt, sizeof(packet));
 
   if (bytes_received != sizeof(*rcv_pkt)) {
     perror("Failed to receive packet");
+    printf("Expected: %zu, Received: %zd\n", sizeof(*rcv_pkt), bytes_received);
     return -1;
   }
 
   // Validate the packet's type and sequence number
   if (rcv_pkt->type != type || rcv_pkt->seqn != seqn) {
     fprintf(stderr, "Packet verification failed (type or seqn mismatch)\n");
+    printf("Expected type: %d, seqn: %d. Received type: %d, seqn: %d\n", type,
+           seqn, rcv_pkt->type, rcv_pkt->seqn);
     return -1;
   }
 
   return 0;
 }
+
 int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   //  fprintf(stderr, "Send_file(%d, %s)\n", sockfd, file_name);
 
-  FILE *file = fopen(file_name, "rb");
-  if (!file) {
+  packet error_pkt = create_packet(ERROR, ERROR, 0, "error", 4);
+  int file_fd = open(file_name, O_RDONLY);
+  if (file_fd < 0) {
     perror("File opening failed");
+    send_message(sockfd, error_pkt);
     return -1;
   }
 
-  fseek(file, 0, SEEK_END);
-  uint32_t total_size = ftell(file);
-  fseek(file, 0, SEEK_SET);
+  struct stat file_stat;
+  if (fstat(file_fd, &file_stat) != 0) {
+    perror("Failed to get file stats");
+    send_message(sockfd, error_pkt);
+    close(file_fd);
+    return -1;
+  }
+
+  uint32_t total_size = (uint32_t)file_stat.st_size;
 
   if (total_size == 0) {
     printf("Error: File is empty or could not determine size: %s\n", file_name);
-    fclose(file);
+    send_message(sockfd, error_pkt);
+    close(file_fd);
     return -1;
   }
 
@@ -73,49 +88,53 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   // Send metadata
   if (send_message(sockfd, metadata_pkt) != 0) {
     perror("Failed to send file metadata");
-    fclose(file);
+    close(file_fd);
     return -1;
   }
 
-  // printf("Metadata sended\n");
+  printf("Metadata sended\n");
   packet pkt;
   size_t read_size;
   uint16_t seqn = 0;
+  char buffer[MAX_PAYLOAD_SIZE];
 
-  while ((read_size = fread(pkt._payload, 1, MAX_PAYLOAD_SIZE, file)) > 0) {
-    // printf("seqn: %d\n", seqn);
-    pkt = create_packet(SEND, seqn++, total_size, pkt._payload,
-                        (uint16_t)read_size);
+  ssize_t total = 0;
+  while ((read_size = read(file_fd, buffer, MAX_PAYLOAD_SIZE)) > 0) {
+    // Send the raw bytes directly, without creating a packet structure
+    ssize_t bytes_sent = send(sockfd, buffer, read_size, 0);
 
-    if (send_message(sockfd, pkt) != 0) {
-      perror("Send failed during file transfer\n");
-      fclose(file);
+    if (bytes_sent < 0) {
+      perror("Send failed during file transfer");
+      close(file_fd);
       return -1;
     }
 
-    // printf("new seqn: %d\n", seqn);
+    total += bytes_sent;
+    // printf("Sent %ld bytes Toal:%ld\n", bytes_sent, total);
   }
 
-  // Ensure EOF packet is properly sent and handled
-  packet eof_pkt = create_packet(END_OF_FILE, seqn, total_size, "eof", 3);
-  if (send_message(sockfd, eof_pkt) != 0) {
-    perror("Send failed during EOF transfer");
-    fclose(file);
-    return -1;
-  }
+  // printf("end seq\n");
+  //  Ensure EOF packet is properly sent and handled
+  //  packet eof_pkt = create_packet(END_OF_FILE, 0, total_size, "eof", 3);
+  //  if (send_message(sockfd, eof_pkt) != 0) {
+  //   perror("Send failed during EOF transfer");
+  //   close(file_fd);
+  //   return -1;
+  // }
 
+  printf("Ack sended\n");
   // Wait for acknowledgment from the server
   packet ack_pkt;
   if (rcv_message(sockfd, OK, END_OF_FILE, &ack_pkt) != 0) {
     perror("Failed to receive acknowledgment for EOF");
-    fclose(file);
+    close(file_fd);
     return -1;
   }
 
-  // printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
-  //      total_size);
+  printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
+         total_size);
 
-  fclose(file);
+  close(file_fd);
   return 0;
 }
 
@@ -133,11 +152,11 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     printf("Error receiving file metadata or connection closed.\n");
     return NULL;
   }
-  // printf("Metadata Received\n");
+  printf("Metadata Received\n");
   memcpy(file_info, metadata_pkt._payload, sizeof(FileInfo));
 
-  // printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
-  //       file_info->last_modified);
+  printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
+         file_info->last_modified);
 
   // Prepare to receive file data
 
@@ -149,40 +168,44 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     printf("Memory allocation failed for %u bytes.\n", total_size);
     return NULL;
   }
-
+  memset(file_data, 0, total_size);
   packet received_packet;
   uint16_t seqn = 0;
 
-  // printf("total size: %d, received size: %d\n", total_size, received_size);
-  //  Receive all data packets
+  printf("total size: %d, received size: %d\n", total_size, received_size);
+  char buffer[MAX_PAYLOAD_SIZE];
   while (received_size < total_size) {
+    // Receive raw bytes directly into the buffer
+    ssize_t bytes_received = recv(socket_fd, buffer, MAX_PAYLOAD_SIZE, 0);
 
-    // printf("seqn: %d\n", seqn);
-
-    if (rcv_message(socket_fd, SEND, seqn++, &received_packet) != 0) {
-      printf("Error receiving packet or connection closed.\n");
+    if (bytes_received < 0) {
+      perror("Error receiving data");
       free(file_data);
       return NULL;
     }
 
-    // Copy received payload into the allocated buffer
-    memcpy(file_data + received_size, received_packet._payload,
-           received_packet.length);
-    received_size += received_packet.length;
+    if (bytes_received == 0) {
+      // Connection closed by the sender
+      printf("Connection closed by sender\n");
+      break;
+    }
 
-    // printf("new seqn: %d\n", seqn);
-    // printf("Received packet %d: size = %d, total received = %d\n", seqn,
-    //      received_packet.length, received_size);
+    // Store the received bytes into the file data buffer
+    memcpy(file_data + received_size, buffer, bytes_received);
+    received_size += bytes_received;
+
+    printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
+           received_size);
   }
 
   // Receive the EOF packet
-  packet eof_pkt;
-  if (rcv_message(socket_fd, END_OF_FILE, seqn, &eof_pkt) != 0) {
-    printf("Error receiving EOF.\n");
-    printf("seqn: %d, type: %d", eof_pkt.type, eof_pkt.seqn);
-    free(file_data);
-    return NULL;
-  }
+  // packet eof_pkt;
+  // if (rcv_message(socket_fd, END_OF_FILE, 0, &eof_pkt) != 0) {
+  //  printf("Error receiving EOF.\n");
+  //  printf("seqn: %d, type: %d", eof_pkt.type, eof_pkt.seqn);
+  //  free(file_data);
+  //  return NULL;
+  //}
 
   // Send acknowledgment for EOF
   packet ack_pkt = create_packet(OK, END_OF_FILE, total_size, "ack", 3);
@@ -192,8 +215,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     return NULL;
   }
 
-  // printf("File received successfully: '%s', total size = %u bytes\n",
-  //  file_info->filename, total_size);
+  printf("File received successfully: '%s', total size = %u bytes\n",
+         file_info->filename, total_size);
 
   return file_data;
 }
