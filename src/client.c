@@ -55,6 +55,9 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
+  while (1)
+    ;
+
   // create_sync_directory();
   // get_sync_dir(sockfd, "sync_dir");
   // start_sync_monitoring("sync_dir", sockfd);

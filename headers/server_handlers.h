@@ -18,7 +18,6 @@
 typedef struct {
   char user_id[MAX_PAYLOAD_SIZE];
   int connection_count;
-  int sockets[MAX_CONNECTIONS_PER_CLIENT];
 } Client;
 
 extern Client manage_clients_connections[MAX_CLIENTS];
@@ -33,7 +32,6 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]);
 int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
 int server_handles_get_sync_dir(int sockfd,
                                 const char user_id[MAX_FILENAME_SIZE]);
-int update_connection_count(int sockfd, const char user_id[MAX_FILENAME_SIZE],
-                            int client_num);
+int update_connection_count(const char *user_id, int client_num);
 
 #endif

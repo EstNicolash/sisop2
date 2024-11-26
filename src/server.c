@@ -37,6 +37,7 @@ int main() {
 int server_setup(int port) {
   int sockfd;
   struct sockaddr_in serv_addr;
+  client_count = 0;
 
   // Create socket
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -85,13 +86,13 @@ void *client_handler(void *arg) {
   printf("Client identified: %s\n", user_id);
 
   // Check and update connection count for this client
-  // if (!update_connection_count(sockfd, user_id, 1)) {
-  //  printf("Client %s has reached the maximum connection limit. Closing "
-  //         "connection.\n",
-  //         user_id);
-  //  close(sockfd);
-  //  return NULL;
-  //}
+  if (update_connection_count(user_id, 1) != 0) {
+    printf("Client %s has reached the maximum connection limit. Closing "
+           "connection.\n",
+           user_id);
+    close(sockfd);
+    return NULL;
+  }
   while (true)
     ;
 
