@@ -55,6 +55,8 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
+  create_directory(SYNC_DIR);
+
   while (1)
     ;
 

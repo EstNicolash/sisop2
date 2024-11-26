@@ -14,6 +14,7 @@
 
 #define SEND 10
 #define RECEIVE 11
+#define METADATA 12
 #define END_OF_FILE 13
 
 #define C_SEND_ID 20
@@ -41,9 +42,9 @@ int send_message(int sockfd, packet pkt);
 // packet
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt);
 
-int send_file(int sockfd, const char filename[MAX_FILENAME_SIZE]);
-char *receive_file(int sockfd, uint32_t *out_total_size, FileInfo *fileinfo);
-int send_file_list(int sockfd, const char filename[MAX_FILENAME_SIZE]);
+int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]);
+char *receive_file(int sockfd, FileInfo *fileinfo);
+int send_file_list(int sockfd, const char file_name[MAX_FILENAME_SIZE]);
 FileInfo *receive_file_list(int socket, int *file_count);
 
 #endif

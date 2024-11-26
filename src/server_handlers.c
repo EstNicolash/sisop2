@@ -24,17 +24,14 @@ int update_connection_count(const char *user_id, int delta) {
 
   for (int i = 0; i < client_count; i++) {
     if (strcmp(manage_clients_connections[i].user_id, user_id) == 0) {
-      // Check if adding a connection exceeds the limit
       if (delta > 0 && manage_clients_connections[i].connection_count >=
                            MAX_CONNECTIONS_PER_CLIENT) {
         pthread_mutex_unlock(&manage_clients_mutex);
         return -1;
       }
 
-      // Update the connection count
       manage_clients_connections[i].connection_count += delta;
 
-      // If the connection count drops to zero, remove the client
       if (manage_clients_connections[i].connection_count <= 0) {
         manage_clients_connections[i] =
             manage_clients_connections[--client_count];
@@ -45,7 +42,6 @@ int update_connection_count(const char *user_id, int delta) {
     }
   }
 
-  // If the client is not found and we are adding a new connection
   if (delta > 0 && client_count < MAX_CLIENTS) {
     strcpy(manage_clients_connections[client_count].user_id, user_id);
     manage_clients_connections[client_count].connection_count = delta;
