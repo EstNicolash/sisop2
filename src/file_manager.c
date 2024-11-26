@@ -143,3 +143,31 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count) {
   closedir(dir);
   return files;
 }
+
+void print_file_list(FileInfo *files, int num_files) {
+  if (!files || num_files <= 0) {
+    printf("No files to display.\n");
+    return;
+  }
+
+  printf("File List:\n");
+  printf("---------------------------------------------------------------------"
+         "-----\n");
+  printf("| %-30s | %-10s | %-20s |\n", "Filename", "Size (bytes)",
+         "Last Modified");
+  printf("---------------------------------------------------------------------"
+         "-----\n");
+
+  for (int i = 0; i < num_files; i++) {
+    char last_modified_str[20];
+    struct tm *tm_info = localtime(&files[i].last_modified);
+    strftime(last_modified_str, sizeof(last_modified_str), "%Y-%m-%d %H:%M:%S",
+             tm_info);
+
+    printf("| %-30s | %-10lu | %-20s |\n", files[i].filename,
+           files[i].file_size, last_modified_str);
+  }
+
+  printf("---------------------------------------------------------------------"
+         "-----\n");
+}

@@ -34,6 +34,8 @@ FileInfo get_file_info(const char file_name[MAX_FILENAME_SIZE]);
 // Lists all files' metadata of specified direcotry
 FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count);
 
+void print_file_list(FileInfo *files, int num_files);
+
 int file_exists(const char filename[MAX_FILENAME_SIZE]);
 
 #endif

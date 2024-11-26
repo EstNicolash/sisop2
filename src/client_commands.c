@@ -73,7 +73,15 @@ int client_download_file(int sockfd, char filename[MAX_FILENAME_SIZE],
   return 0;
 }
 
-int client_list_client(int sockfd) { return 0; }
+int client_list_client(int sockfd) {
+
+  int file_count = 0;
+  const char path[MAX_FILENAME_SIZE] = SYNC_DIR;
+  FileInfo *files = list_files(path, &file_count);
+  print_file_list(files, file_count);
+
+  return 0;
+}
 
 int client_list_server(int sockfd) { return 0; }
 
