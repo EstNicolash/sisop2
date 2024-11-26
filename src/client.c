@@ -94,15 +94,17 @@ int main(int argc, char *argv[]) {
       } else if (strcmp(command, LIST_SERVER_STR) == 0) {
         client_list_server(sockfd);
       } else if (strcmp(command, GET_SYNC_DIR_STR) == 0) {
-        // get_sync_dir(sockfd, "sync_dir");
+        get_sync_dir(sockfd);
       } else if (strcmp(command, EXIT_STR) == 0) {
+        client_exit(sockfd);
+        goto end;
         break;
       }
     }
 
     //    pthread_mutex_unlock(&client_sync_mutex);
   }
-
+end:
   close(sockfd);
   printf("Client stop\n");
   return 0;

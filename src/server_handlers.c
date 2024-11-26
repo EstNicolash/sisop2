@@ -101,6 +101,18 @@ int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
   return 0;
 }
 
+int server_handles_get_sync_dir(int sockfd) {
+
+  packet ack = create_packet(OK, C_GET_SYNC_DIR, 0, "ok", 2);
+  if (send_message(sockfd, ack) != 0) {
+    perror("Error sending ack get_sync\n");
+    return -1;
+  }
+
+  printf("Sync dir acked");
+  return 0;
+}
+
 int update_connection_count(const char *user_id, int delta) {
   pthread_mutex_lock(&manage_clients_mutex);
 

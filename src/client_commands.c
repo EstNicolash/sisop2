@@ -2,7 +2,11 @@
 #include "../headers/protocol.h"
 #include <stdint.h>
 #include <string.h>
-
+int client_exit(int sockfd) {
+  packet pkt = create_packet(C_EXIT, 0, 0, "exit", 4);
+  send_message(sockfd, pkt);
+  return 0;
+}
 int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]) {
 
   packet pkt = create_packet(C_SEND_ID, 0, 0, client_id, strlen(client_id));
@@ -128,6 +132,99 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
     perror("error in deleting or file doesn't exist\n");
     return -1;
   }
+
+  return 0;
+}
+
+int get_sync_dir(int sockfd) {
+
+  packet get_pkt = create_packet(C_GET_SYNC_DIR, 0, 0, "get", 3);
+
+  if (send_message(sockfd, get_pkt) != 0) {
+    perror("Error sending get_pkt\n");
+    return -1;
+  }
+
+  if (rcv_message(sockfd, OK, C_GET_SYNC_DIR, &get_pkt) != 0) {
+    perror("wrong get ACK\n");
+    return -1;
+  }
+
+  printf("Sync Dir acked\n");
+
+  // Local file LISt
+  int local_file_count = 0;
+  const char path[MAX_FILENAME_SIZE] = SYNC_DIR;
+  FileInfo *local_files = list_files(path, &local_file_count);
+
+  // Get server file list
+  packet msg_pkt = create_packet(C_LIST_SERVER, 0, 0, "ok", 2);
+
+  if (send_message(sockfd, msg_pkt) != 0) {
+    perror("Fail sending list_server\n");
+    return -1;
+  }
+
+  int server_file_count = 0;
+  FileInfo *server_files = receive_file_list(sockfd, &server_file_count);
+
+  FileInfo *to_delete_files = malloc(local_file_count * sizeof(FileInfo));
+  FileInfo *to_download_files = malloc(server_file_count * sizeof(FileInfo));
+  if (!to_delete_files || !to_download_files) {
+    perror("Memory allocation failed\n");
+    return -1;
+  }
+
+  int to_delete_count = 0;
+  int to_download_count = 0;
+
+  // Identify files to download
+  for (int i = 0; i < server_file_count; i++) {
+    int found = 0;
+    for (int j = 0; j < local_file_count; j++) {
+      if (strcmp(server_files[i].filename, local_files[j].filename) == 0) {
+        found = 1;
+        if (server_files[i].last_modified > local_files[j].last_modified) {
+          to_download_files[to_download_count++] = server_files[i];
+        }
+        break;
+      }
+    }
+    if (!found) {
+      to_download_files[to_download_count++] = server_files[i];
+    }
+  }
+
+  // Identify files to delete
+  for (int i = 0; i < local_file_count; i++) {
+    int found = 0;
+    for (int j = 0; j < server_file_count; j++) {
+      if (strcmp(local_files[i].filename, server_files[j].filename) == 0) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      to_delete_files[to_delete_count++] = local_files[i];
+    }
+  }
+
+  free(local_files);
+  free(server_files);
+
+  for (int i = 0; i < to_delete_count; i++) {
+    char file_path[MAX_PAYLOAD_SIZE * 2];
+    snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR,
+             to_delete_files[i].filename);
+    delete_file(file_path);
+  }
+
+  for (int i = 0; i < to_download_count; i++) {
+    client_download_file(sockfd, to_download_files[i].filename, SYNC_DIR);
+  }
+
+  free(to_delete_files);
+  free(to_download_files);
 
   return 0;
 }

@@ -22,6 +22,7 @@
 #define C_DOWNLOAD 22
 #define C_DELETE 23
 #define C_LIST_SERVER 24
+#define C_EXIT 25
 #define C_GET_SYNC_DIR 29
 
 // Estrutura para troca de mensagens de arquivo

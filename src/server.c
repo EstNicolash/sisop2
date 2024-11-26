@@ -120,12 +120,15 @@ void *client_handler(void *arg) {
 
     case C_GET_SYNC_DIR:
       printf("Sync Request: %s\n", user_id);
+      server_handles_get_sync_dir(sockfd);
       break;
 
     case C_DELETE:
       server_handles_delete(sockfd, user_id);
       break;
-
+    case C_EXIT:
+      goto end;
+      break;
     default:
       printf("Unknown command type: %d\n", received_packet.type);
       goto end;
