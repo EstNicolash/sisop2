@@ -70,6 +70,37 @@ int server_handles_list_server(int sockfd,
   return send_file_list(sockfd, user_id);
 }
 
+int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
+
+  packet delete_pkt;
+
+  if (rcv_message(sockfd, C_DELETE, 0, &delete_pkt) != 0) {
+    perror("Failed to receive delete_msg\n");
+    return -1;
+  }
+
+  char file_path[MAX_PAYLOAD_SIZE * 2];
+  snprintf(file_path, sizeof(file_path), "%s/%s", user_id, delete_pkt._payload);
+
+  if (file_exists(file_path) != 0) {
+    perror("File doesn't exist\n");
+    packet fail = create_packet(ERROR, C_DELETE, 0, "error", 5);
+    send_message(sockfd, fail);
+    return -1;
+  }
+
+  delete_file(file_path);
+
+  packet ack = create_packet(OK, C_DELETE, 0, "ok", 2);
+
+  if (send_message(sockfd, ack) != 0) {
+    perror("error sending ack\n");
+    return -1;
+  }
+
+  return 0;
+}
+
 int update_connection_count(const char *user_id, int delta) {
   pthread_mutex_lock(&manage_clients_mutex);
 

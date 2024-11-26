@@ -1,6 +1,7 @@
 #include "../headers/client_commands.h"
 #include "../headers/protocol.h"
 #include <stdint.h>
+#include <string.h>
 
 int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]) {
 
@@ -107,5 +108,26 @@ int client_list_server(int sockfd) {
 }
 
 int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
+
+  packet delete_msg = create_packet(C_DELETE, 0, 0, "delete", 6);
+
+  if (send_message(sockfd, delete_msg) != 0) {
+    perror("Failed to send delete_msg\n");
+    return -1;
+  }
+
+  strncpy(delete_msg._payload, filename, MAX_FILENAME_SIZE);
+  delete_msg.length = strlen(delete_msg._payload);
+
+  if (send_message(sockfd, delete_msg) != 0) {
+    perror("Failed to send delete_msg\n");
+    return -1;
+  }
+
+  if (rcv_message(sockfd, OK, C_DELETE, &delete_msg) != 0) {
+    perror("error in deleting or file doesn't exist\n");
+    return -1;
+  }
+
   return 0;
 }

@@ -123,7 +123,7 @@ void *client_handler(void *arg) {
       break;
 
     case C_DELETE:
-      // server_handles_client_delete(sockfd, user_id, &received_packet);
+      server_handles_delete(sockfd, user_id);
       break;
 
     default:
