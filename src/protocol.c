@@ -93,9 +93,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   }
 
   printf("Metadata sended\n");
-  packet pkt;
   size_t read_size;
-  uint16_t seqn = 0;
   char buffer[MAX_PAYLOAD_SIZE];
 
   ssize_t total = 0;
@@ -169,8 +167,6 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     return NULL;
   }
   memset(file_data, 0, total_size);
-  packet received_packet;
-  uint16_t seqn = 0;
 
   printf("total size: %d, received size: %d\n", total_size, received_size);
   char buffer[MAX_PAYLOAD_SIZE];

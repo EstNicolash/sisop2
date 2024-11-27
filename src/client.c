@@ -25,10 +25,12 @@
 #define EVENT_SIZE (sizeof(struct inotify_event))
 #define EVENT_BUF_LEN (1024 * (EVENT_SIZE + 16))
 int sync_active = 1;
-pthread_mutex_t client_sync_mutex; // Mutex for synchronization
+int inotify_active = 1;
+pthread_mutex_t client_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_connect(const char *server_ip, int port);
-void *sync_thread_function(void *arg);
-// void *inotify_handler(void *arg);
+void *sync_dir_thread(void *arg);
+void *inotify_thread(void *arg);
+void monitor_sync_dir(int sockfd);
 
 int main(int argc, char *argv[]) {
   int sockfd;
@@ -66,21 +68,14 @@ int main(int argc, char *argv[]) {
   const char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
   create_directory(dir);
 
-  // Initialize the mutex
-  pthread_mutex_init(&client_sync_mutex, NULL);
+  pthread_t monitor_thread;
+  if (pthread_create(&monitor_thread, NULL, inotify_thread, &sockfd) != 0) {
+    perror("Failed to create thread");
+    return -1;
+  }
 
-  // Create the sync thread
-  /*
-  pthread_t inotify_thread;
-  if (pthread_create(&inotify_thread, NULL, inotify_handler, &sockfd) != 0) {
-    perror("Failed to create inotify handler thread");
-    pthread_mutex_destroy(&client_sync_mutex);
-    close(sockfd);
-    return EXIT_FAILURE;
-  }*/
   pthread_t sync_thread;
-
-  if (pthread_create(&sync_thread, NULL, sync_thread_function, &sockfd) != 0) {
+  if (pthread_create(&sync_thread, NULL, sync_dir_thread, &sockfd) != 0) {
     perror("Failed to create sync thread");
     close(sockfd);
     pthread_mutex_destroy(&client_sync_mutex);
@@ -123,6 +118,7 @@ int main(int argc, char *argv[]) {
       } else if (strcmp(command, EXIT_STR) == 0) {
         client_exit(sockfd);
         sync_active = 0;
+        inotify_active = 0;
         break;
       }
     }
@@ -131,13 +127,24 @@ int main(int argc, char *argv[]) {
   if (pthread_join(sync_thread, NULL) != 0) {
     perror("Failed to join sync thread");
   }
+
+  if (pthread_join(monitor_thread, NULL) != 0) {
+    perror("Failed to join thread");
+  }
+
   pthread_mutex_destroy(&client_sync_mutex);
   close(sockfd);
   printf("Client stop\n");
   return 0;
 }
+void *inotify_thread(void *arg) {
+  int sockfd = *(int *)arg;
+  monitor_sync_dir(sockfd);
+  return NULL;
+}
+
 // Thread function to periodically sync directories
-void *sync_thread_function(void *arg) {
+void *sync_dir_thread(void *arg) {
   int sockfd = *(int *)arg;
   while (sync_active == 1) {
     pthread_mutex_lock(&client_sync_mutex);
@@ -146,69 +153,78 @@ void *sync_thread_function(void *arg) {
       fprintf(stderr, "Error syncing directories\n");
     }
     pthread_mutex_unlock(&client_sync_mutex);
-    sleep(3);
+    sleep(4);
   }
   printf("Sync thread exiting...\n");
   return NULL;
 }
 
-/*
-void *inotify_handler(void *arg) {
-  int sockfd = *(int *)arg;        // File descriptor for server communication
-  int inotify_fd = inotify_init(); // Initialize inotify instance
+void monitor_sync_dir(int sockfd) {
 
-  if (inotify_fd < 0) {
-    perror("inotify_init failed");
-    return NULL;
+  printf("Teste 1\n");
+  int inotifyFd = inotify_init();
+  if (inotifyFd == -1) {
+    perror("Error initializing inotify");
+    return;
   }
 
-  int watch_fd = inotify_add_watch(inotify_fd, SYNC_DIR,
-                                   IN_CREATE | IN_MODIFY | IN_DELETE);
-  if (watch_fd < 0) {
-    perror("inotify_add_watch failed");
-    close(inotify_fd);
-    return NULL;
+  int wd =
+      inotify_add_watch(inotifyFd, SYNC_DIR, IN_CREATE | IN_DELETE | IN_MODIFY);
+
+  if (wd == -1) {
+    perror("Error adding watch");
+    close(inotifyFd);
+    return;
   }
 
-  char buffer[EVENT_BUF_LEN];
-  while (1) {
-    int length = read(inotify_fd, buffer, EVENT_BUF_LEN);
-    if (length < 0) {
-      perror("read error");
+  char buf[4096];
+  ssize_t numRead;
+
+  printf("Teste 2\n");
+  while (inotify_active == 1) {
+    numRead = read(inotifyFd, buf, sizeof(buf));
+    if (numRead == 0)
+      break;
+    if (numRead == -1) {
+      perror("Error reading events");
       break;
     }
 
-    int i = 0;
-    while (i < length) {
-      struct inotify_event *event = (struct inotify_event *)&buffer[i];
+    printf("Teste 3\n");
+    for (char *p = buf; p < buf + numRead;) {
+      struct inotify_event *event = (struct inotify_event *)p;
+      char file_path[MAX_PAYLOAD_SIZE * 2];
+      snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, event->name);
 
-      if (event->len) {
+      if (inotify_active != 1)
+        break;
+
+      if (event->mask & IN_CREATE) {
         pthread_mutex_lock(&client_sync_mutex);
-
-        if (event->mask & IN_CREATE) {
-          // printf("File created: %s\n", event->name);
-          client_upload_file(sockfd, event->name);
-        }
-        if (event->mask & IN_MODIFY) {
-          // printf("File modified: %s\n", event->name);
-          client_upload_file(sockfd, event->name);
-        }
-        if (event->mask & IN_DELETE) {
-          // printf("File deleted: %s\n", event->name);
-          client_delete_file(sockfd, event->name);
-        }
-
+        printf("File created: %s\n", event->name);
+        client_upload_file(sockfd, file_path);
         pthread_mutex_unlock(&client_sync_mutex);
       }
-      i += EVENT_SIZE + event->len;
+
+      if (event->mask & IN_MODIFY) {
+        pthread_mutex_lock(&client_sync_mutex);
+        printf("File modified: %s\n", event->name);
+        client_upload_file(sockfd, file_path);
+        pthread_mutex_unlock(&client_sync_mutex);
+      }
+
+      if (event->mask & IN_DELETE) {
+        pthread_mutex_lock(&client_sync_mutex);
+        printf("Deleting file: %s\n", event->name);
+        client_delete_file(sockfd, event->name);
+        pthread_mutex_unlock(&client_sync_mutex);
+      }
+
+      p += sizeof(struct inotify_event) + event->len;
     }
   }
-
-  inotify_rm_watch(inotify_fd, watch_fd);
-  close(inotify_fd);
-  return NULL;
-}*/
-
+  close(inotifyFd);
+}
 int client_connect(const char *server_ip, int port) {
   int sockfd;
   struct sockaddr_in serv_addr;

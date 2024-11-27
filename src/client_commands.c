@@ -115,6 +115,7 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
 
   packet delete_msg = create_packet(C_DELETE, 0, 0, "delete", 6);
 
+  printf("delete msg\n");
   if (send_message(sockfd, delete_msg) != 0) {
     perror("Failed to send delete_msg\n");
     return -1;
@@ -123,6 +124,7 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
   strncpy(delete_msg._payload, filename, MAX_FILENAME_SIZE);
   delete_msg.length = strlen(delete_msg._payload);
 
+  printf("file name\n");
   if (send_message(sockfd, delete_msg) != 0) {
     perror("Failed to send delete_msg\n");
     return -1;
@@ -133,6 +135,7 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
+  printf("delete acked\n");
   return 0;
 }
 
