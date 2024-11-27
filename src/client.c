@@ -161,15 +161,14 @@ void *sync_dir_thread(void *arg) {
 
 void monitor_sync_dir(int sockfd) {
 
-  printf("Teste 1\n");
   int inotifyFd = inotify_init();
   if (inotifyFd == -1) {
     perror("Error initializing inotify");
     return;
   }
 
-  int wd =
-      inotify_add_watch(inotifyFd, SYNC_DIR, IN_CREATE | IN_DELETE | IN_MODIFY);
+  int wd = inotify_add_watch(inotifyFd, SYNC_DIR,
+                             IN_CREATE | IN_DELETE | IN_MODIFY | IN_MOVED_FROM);
 
   if (wd == -1) {
     perror("Error adding watch");
@@ -180,7 +179,6 @@ void monitor_sync_dir(int sockfd) {
   char buf[4096];
   ssize_t numRead;
 
-  printf("Teste 2\n");
   while (inotify_active == 1) {
     numRead = read(inotifyFd, buf, sizeof(buf));
     if (numRead == 0)
@@ -190,7 +188,6 @@ void monitor_sync_dir(int sockfd) {
       break;
     }
 
-    printf("Teste 3\n");
     for (char *p = buf; p < buf + numRead;) {
       struct inotify_event *event = (struct inotify_event *)p;
       char file_path[MAX_PAYLOAD_SIZE * 2];
@@ -201,25 +198,31 @@ void monitor_sync_dir(int sockfd) {
 
       if (event->mask & IN_CREATE) {
         pthread_mutex_lock(&client_sync_mutex);
-        printf("File created: %s\n", event->name);
+        // printf("File created: %s\n", event->name);
         client_upload_file(sockfd, file_path);
         pthread_mutex_unlock(&client_sync_mutex);
       }
 
       if (event->mask & IN_MODIFY) {
         pthread_mutex_lock(&client_sync_mutex);
-        printf("File modified: %s\n", event->name);
+        // printf("File modified: %s\n", event->name);
         client_upload_file(sockfd, file_path);
         pthread_mutex_unlock(&client_sync_mutex);
       }
 
       if (event->mask & IN_DELETE) {
         pthread_mutex_lock(&client_sync_mutex);
-        printf("Deleting file: %s\n", event->name);
+        // printf("Deleting file: %s\n", event->name);
         client_delete_file(sockfd, event->name);
         pthread_mutex_unlock(&client_sync_mutex);
       }
 
+      if (event->mask & IN_MOVED_FROM) {
+        pthread_mutex_lock(&client_sync_mutex);
+        // printf("Deleting file: %s\n", event->name);
+        client_delete_file(sockfd, event->name);
+        pthread_mutex_unlock(&client_sync_mutex);
+      }
       p += sizeof(struct inotify_event) + event->len;
     }
   }
