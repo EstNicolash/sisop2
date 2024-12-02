@@ -120,8 +120,8 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   //   return -1;
   // }
 
-  printf("Ack sended\n");
-  // Wait for acknowledgment from the server
+  // printf("Ack sended\n");
+  //  Wait for acknowledgment from the server
   packet ack_pkt;
   if (rcv_message(sockfd, OK, END_OF_FILE, &ack_pkt) != 0) {
     perror("Failed to receive acknowledgment for EOF");
@@ -129,8 +129,8 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
-  printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
-         total_size);
+  //  printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
+  //       total_size);
 
   close(file_fd);
   return 0;
@@ -211,8 +211,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     return NULL;
   }
 
-  printf("File received successfully: '%s', total size = %u bytes\n",
-         file_info->filename, total_size);
+  // printf("File received successfully: '%s', total size = %u bytes\n",
+  //       file_info->filename, total_size);
 
   return file_data;
 }

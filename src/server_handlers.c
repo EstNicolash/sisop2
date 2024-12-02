@@ -109,7 +109,7 @@ int server_handles_get_sync_dir(int sockfd) {
     return -1;
   }
 
-  printf("Sync dir acked");
+  // printf("Sync dir acked");
   return 0;
 }
 
