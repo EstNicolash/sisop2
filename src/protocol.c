@@ -150,11 +150,11 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     printf("Error receiving file metadata or connection closed.\n");
     return NULL;
   }
-  printf("Metadata Received\n");
+  // printf("Metadata Received\n");
   memcpy(file_info, metadata_pkt._payload, sizeof(FileInfo));
 
-  printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
-         file_info->last_modified);
+  // printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
+  //      file_info->last_modified);
 
   // Prepare to receive file data
 
@@ -168,7 +168,7 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
   }
   memset(file_data, 0, total_size);
 
-  printf("total size: %d, received size: %d\n", total_size, received_size);
+  // printf("total size: %d, received size: %d\n", total_size, received_size);
   char buffer[MAX_PAYLOAD_SIZE];
   while (received_size < total_size) {
     // Receive raw bytes directly into the buffer
@@ -190,8 +190,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     memcpy(file_data + received_size, buffer, bytes_received);
     received_size += bytes_received;
 
-    printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
-           received_size);
+    // printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
+    //     received_size);
   }
 
   // Receive the EOF packet
