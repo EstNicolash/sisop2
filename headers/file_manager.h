@@ -1,7 +1,7 @@
 #ifndef FILEMANAGER_H
 #define FILEMANAGER_H
 
-#define MAX_FILENAME_SIZE 512
+#define MAX_FILENAME_SIZE 1024
 #include <stdint.h>
 #include <time.h>
 
