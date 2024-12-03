@@ -30,12 +30,30 @@ int send_message(int sockfd, packet pkt) {
 }
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
   ssize_t bytes_received = read(sockfd, rcv_pkt, sizeof(packet));
+  char buffer[MAX_PAYLOAD_SIZE];
+  packet *file_data = malloc(sizeof(packet));
+   while (received_size < sizeof(packet)) {
+    // Receive raw bytes directly into the buffer
+    ssize_t bytes_received = recv(socket_fd, buffer, MAX_PAYLOAD_SIZE, 0);
 
-  if (bytes_received != sizeof(*rcv_pkt)) {
-    perror("Failed to receive packet");
-    printf("Expected: %zu, Received: %zd\n", sizeof(*rcv_pkt), bytes_received);
-    return -1;
+    if (bytes_received < 0) {
+      perror("Error receiving data");
+      free(file_data);
+      return NULL;
+    }
+
+    if (bytes_received == 0) {
+      // Connection closed by the sender
+      printf("Connection closed by sender\n");
+      break;
+    }
+
+    // Store the received bytes into the file data buffer
+    memcpy(file_data + received_size, buffer, bytes_received);
+    received_size += bytes_received;
+
   }
+
 
   // Validate the packet's type and sequence number
   if (rcv_pkt->type != type || rcv_pkt->seqn != seqn) {
