@@ -132,7 +132,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
-  printf("Metadata sended\n");
+  //printf("Metadata sended\n");
   size_t read_size;
   char buffer[MAX_PAYLOAD_SIZE];
 
