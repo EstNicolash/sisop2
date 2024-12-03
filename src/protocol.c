@@ -39,8 +39,8 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
 
     if (bytes_received < 0) {
       perror("Error receiving data");
-      free(file_data);
-      return NULL;
+     // free(file_data);
+      return -1;
     }
 
     if (bytes_received == 0) {
