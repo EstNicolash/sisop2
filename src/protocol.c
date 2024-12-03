@@ -29,9 +29,12 @@ int send_message(int sockfd, packet pkt) {
   return 0;
 }
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
-  ssize_t bytes_received = read(sockfd, rcv_pkt, sizeof(packet));
-  ssize_t received_size = bytes_received;
   char buffer[MAX_PAYLOAD_SIZE];
+  ssize_t bytes_received = read(sockfd, buffer, sizeof(packet));
+  ssize_t received_size = 0;
+  memcpy(rcv_pkt + received_size, buffer, bytes_received);
+  ssize_t received_size = bytes_received;
+
   
    while (received_size < sizeof(packet)) {
     // Receive raw bytes directly into the buffer
