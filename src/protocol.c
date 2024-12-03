@@ -28,6 +28,7 @@ int send_message(int sockfd, packet pkt) {
   }
   return 0;
 }
+
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
   char buffer[MAX_PAYLOAD_SIZE];
   ssize_t received_size = 0;
@@ -52,7 +53,11 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
 
   // Receive remaining data until the full packet is received
   while (received_size < sizeof(packet)) {
-    bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
+    // Calculate how many more bytes are needed
+    ssize_t remaining_bytes = sizeof(packet) - received_size;
+
+    // Receive only the remaining bytes
+    bytes_received = recv(sockfd, buffer, remaining_bytes, 0);
 
     if (bytes_received < 0) {
       perror("Error receiving data");
@@ -80,6 +85,7 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
 
   return 0;
 }
+
 
 
 int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
