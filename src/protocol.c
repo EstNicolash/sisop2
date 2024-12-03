@@ -30,11 +30,12 @@ int send_message(int sockfd, packet pkt) {
 }
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
   ssize_t bytes_received = read(sockfd, rcv_pkt, sizeof(packet));
+  ssize_t received_size = bytes_received;
   char buffer[MAX_PAYLOAD_SIZE];
-  packet *file_data = malloc(sizeof(packet));
+  
    while (received_size < sizeof(packet)) {
     // Receive raw bytes directly into the buffer
-    ssize_t bytes_received = recv(socket_fd, buffer, MAX_PAYLOAD_SIZE, 0);
+    ssize_t bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
 
     if (bytes_received < 0) {
       perror("Error receiving data");
@@ -49,9 +50,9 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
     }
 
     // Store the received bytes into the file data buffer
-    memcpy(file_data + received_size, buffer, bytes_received);
+    memcpy(rcv_pkt + received_size, buffer, bytes_received);
     received_size += bytes_received;
-
+    return 0;
   }
 
 
