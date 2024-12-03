@@ -52,7 +52,6 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
     // Store the received bytes into the file data buffer
     memcpy(rcv_pkt + received_size, buffer, bytes_received);
     received_size += bytes_received;
-    return 0;
   }
 
 
