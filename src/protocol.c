@@ -30,33 +30,45 @@ int send_message(int sockfd, packet pkt) {
 }
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
   char buffer[MAX_PAYLOAD_SIZE];
-  ssize_t bytes_received = read(sockfd, buffer, sizeof(packet));
   ssize_t received_size = 0;
-  memcpy(rcv_pkt + received_size, buffer, bytes_received);
-  ssize_t received_size = bytes_received;
+  ssize_t bytes_received;
 
-  
-   while (received_size < sizeof(packet)) {
-    // Receive raw bytes directly into the buffer
-    ssize_t bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
+  // First, try to receive the initial portion of the packet
+  bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
+  if (bytes_received < 0) {
+    perror("Error receiving data");
+    return -1;
+  }
+
+  if (bytes_received == 0) {
+    // Connection closed by the sender
+    printf("Connection closed by sender\n");
+    return -1;
+  }
+
+  // Copy the first portion of data into the packet buffer
+  memcpy(rcv_pkt, buffer, bytes_received);
+  received_size += bytes_received;
+
+  // Receive remaining data until the full packet is received
+  while (received_size < sizeof(packet)) {
+    bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
 
     if (bytes_received < 0) {
       perror("Error receiving data");
-     // free(file_data);
       return -1;
     }
 
     if (bytes_received == 0) {
       // Connection closed by the sender
       printf("Connection closed by sender\n");
-      break;
+      return -1;
     }
 
-    // Store the received bytes into the file data buffer
-    memcpy(rcv_pkt + received_size, buffer, bytes_received);
+    // Copy the received data into the packet buffer starting where we left off
+    memcpy((char*)rcv_pkt + received_size, buffer, bytes_received);
     received_size += bytes_received;
   }
-
 
   // Validate the packet's type and sequence number
   if (rcv_pkt->type != type || rcv_pkt->seqn != seqn) {
@@ -68,6 +80,7 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
 
   return 0;
 }
+
 
 int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   //  fprintf(stderr, "Send_file(%d, %s)\n", sockfd, file_name);
