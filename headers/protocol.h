@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#define MAX_PAYLOAD_SIZE 4096
+#define MAX_PAYLOAD_SIZE 1024
 
 #define OK 0
 #define ERROR 1
