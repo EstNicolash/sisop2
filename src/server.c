@@ -74,7 +74,6 @@ void *client_handler(void *arg) {
   int sockfd = *((int *)arg);
   free(arg);
 
-  packet received_packet;
   char user_id[MAX_FILENAME_SIZE] = {0};
 
   // Handle client identification
