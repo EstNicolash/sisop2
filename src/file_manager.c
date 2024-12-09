@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <openssl/evp.h>
 
 int create_directory(const char dir_name[MAX_FILENAME_SIZE]) {
   return mkdir(dir_name, 0755);
@@ -79,6 +80,7 @@ FileInfo get_file_info(const char file_name[MAX_FILENAME_SIZE]) {
   info.last_modified = st.st_mtime;
   info.last_accessed = st.st_atime;
   info.creation_time = st.st_ctime;
+  memcpy(info.md5_checksum, fileMd5(file_name), 33);
 
   return info;
 }
@@ -119,7 +121,9 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count) {
     files[*file_count].last_modified = st.st_mtime;
     files[*file_count].last_accessed = st.st_atime;
     files[*file_count].creation_time = st.st_ctime;
+    memcpy(files[*file_count].md5_checksum, fileMd5(file_path), 33);
     (*file_count)++;
+    
   }
 
   closedir(dir);
@@ -152,4 +156,31 @@ void print_file_list(FileInfo *files, int num_files) {
 
   printf("---------------------------------------------------------------------"
          "-----\n");
+}
+
+unsigned char *fileMd5(const char *filename) {
+    EVP_MD_CTX *mdctx;
+    unsigned char *md5_digest;
+    unsigned int md5_digest_len = 33;
+    FILE *inFile = fopen(filename, "rb");
+    int bytes;
+    unsigned char data[1024];
+
+    if (inFile == NULL) {
+        printf ("%s can't be opened.\n", filename);
+        return 0;
+    }
+    
+    mdctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
+
+    while ((bytes = fread (data, 1, 1024, inFile)) != 0)
+        EVP_DigestUpdate(mdctx, data, bytes);
+    md5_digest = (unsigned char *)OPENSSL_malloc(md5_digest_len);
+    EVP_DigestFinal_ex(mdctx, md5_digest, &md5_digest_len);
+    EVP_MD_CTX_free(mdctx);
+
+    fclose (inFile);
+
+    return md5_digest;
 }
