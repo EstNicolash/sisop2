@@ -65,13 +65,11 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
     }
 
     if (bytes_received == 0) {
-      // Connection closed by the sender
-      printf("Connection closed by sender\n");
-      return -1;
+      continue;
     }
 
     // Copy the received data into the packet buffer starting where we left off
-    memcpy((char*)rcv_pkt + received_size, buffer, bytes_received);
+    memcpy((char *)rcv_pkt + received_size, buffer, bytes_received);
     received_size += bytes_received;
   }
 
@@ -130,7 +128,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
-  //printf("Metadata sended\n");
+  // printf("Metadata sended\n");
   size_t read_size;
   char buffer[MAX_PAYLOAD_SIZE];
 
