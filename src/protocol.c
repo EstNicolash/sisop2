@@ -34,7 +34,8 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
   ssize_t received_size = 0;
   ssize_t bytes_received;
 
-  // First, try to receive the initial portion of the packet
+// Rewrite this in the future:
+start:
   bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
   if (bytes_received < 0) {
     perror("Error receiving data");
@@ -43,8 +44,7 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
 
   if (bytes_received == 0) {
     // Connection closed by the sender
-    printf("Connection closed by sender\n");
-    return -1;
+    goto start;
   }
 
   // Copy the first portion of data into the packet buffer
@@ -218,8 +218,7 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
 
     if (bytes_received == 0) {
       // Connection closed by the sender
-      printf("Connection closed by sender\n");
-      break;
+      continue;
     }
 
     // Store the received bytes into the file data buffer
