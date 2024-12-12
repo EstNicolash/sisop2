@@ -12,6 +12,7 @@ typedef struct FileInfo {
   time_t last_modified;
   time_t last_accessed;
   time_t creation_time;
+  unsigned char md5_checksum[33];
 } FileInfo;
 
 // Create a directory by it name
@@ -37,5 +38,7 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count);
 void print_file_list(FileInfo *files, int num_files);
 
 int file_exists(const char filename[MAX_FILENAME_SIZE]);
+
+unsigned char *fileMd5(const char *filename);
 
 #endif

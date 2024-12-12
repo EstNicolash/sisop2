@@ -2,6 +2,7 @@
 #include "../headers/protocol.h"
 #include <stdint.h>
 #include <string.h>
+#include <openssl/evp.h>
 int client_exit(int sockfd) {
   packet pkt = create_packet(C_EXIT, 0, 0, "exit", 4);
   send_message(sockfd, pkt);
@@ -187,7 +188,9 @@ int get_sync_dir(int sockfd) {
     for (int j = 0; j < local_file_count; j++) {
       if (strcmp(server_files[i].filename, local_files[j].filename) == 0) {
         found = 1;
-        if (server_files[i].last_modified > local_files[j].last_modified) {
+
+        if ((server_files[i].last_modified > local_files[j].last_modified) && 
+            (!memcmp(server_files[i].md5_checksum, local_files[j].md5_checksum, 16))){
           to_download_files[to_download_count++] = server_files[i];
         }
         break;
