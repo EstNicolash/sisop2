@@ -74,6 +74,11 @@ start:
   }
 
   // Validate the packet's type and sequence number
+
+  if (type == ANYTHING) {
+    return 0;
+  }
+
   if (rcv_pkt->type != type || rcv_pkt->seqn != seqn) {
     fprintf(stderr, "Packet verification failed (type or seqn mismatch)\n");
     printf("Expected type: %d, seqn: %d. Received type: %d, seqn: %d\n", type,

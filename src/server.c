@@ -99,7 +99,9 @@ void *client_handler(void *arg) {
   while (1) {
 
     packet received_packet;
-    read(sockfd, &received_packet, sizeof(received_packet));
+    if (rcv_message(sockfd, ANYTHING, 0, &received_packet) != 0) {
+      fprintf(stderr, "Failed to receive packet");
+    };
 
     printf("Received request from client %s (type: %d):\n", user_id,
            received_packet.type);
