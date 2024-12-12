@@ -1,8 +1,8 @@
 #include "../headers/client_commands.h"
 #include "../headers/protocol.h"
+#include <openssl/evp.h>
 #include <stdint.h>
 #include <string.h>
-#include <openssl/evp.h>
 int client_exit(int sockfd) {
   packet pkt = create_packet(C_EXIT, 0, 0, "exit", 4);
   send_message(sockfd, pkt);
@@ -116,7 +116,7 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
 
   packet delete_msg = create_packet(C_DELETE, 0, 0, "delete", 6);
 
- // printf("delete msg\n");
+  // printf("delete msg\n");
   if (send_message(sockfd, delete_msg) != 0) {
     perror("Failed to send delete_msg\n");
     return -1;
@@ -125,7 +125,7 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
   strncpy(delete_msg._payload, filename, MAX_FILENAME_SIZE);
   delete_msg.length = strlen(delete_msg._payload);
 
-  //printf("file name\n");
+  // printf("file name\n");
   if (send_message(sockfd, delete_msg) != 0) {
     perror("Failed to send delete_msg\n");
     return -1;
@@ -189,10 +189,16 @@ int get_sync_dir(int sockfd) {
       if (strcmp(server_files[i].filename, local_files[j].filename) == 0) {
         found = 1;
 
-        if ((server_files[i].last_modified > local_files[j].last_modified) && 
-            (!memcmp(server_files[i].md5_checksum, local_files[j].md5_checksum, 16))){
+        if (strcmp((char *)server_files[i].md5_checksum,
+                   (char *)local_files[j].md5_checksum) != 0) {
+
           to_download_files[to_download_count++] = server_files[i];
         }
+        // if ((server_files[i].last_modified > local_files[j].last_modified) ||
+        //  (memcmp(server_files[i].md5_checksum, local_files[j].md5_checksum,
+        //          16) != 0)) {
+        // to_download_files[to_download_count++] = server_files[i];
+        // }
         break;
       }
     }

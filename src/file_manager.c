@@ -2,12 +2,12 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <openssl/evp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <openssl/evp.h>
 
 int create_directory(const char dir_name[MAX_FILENAME_SIZE]) {
   return mkdir(dir_name, 0755);
@@ -69,7 +69,7 @@ int delete_file(const char file_name[MAX_FILENAME_SIZE]) {
 FileInfo get_file_info(const char file_name[MAX_FILENAME_SIZE]) {
   FileInfo info = {0};
   struct stat st;
-
+  unsigned char *md5_checksum;
   if (stat(file_name, &st) == -1) {
     perror("Failed to get file metadata");
     return info;
@@ -80,7 +80,14 @@ FileInfo get_file_info(const char file_name[MAX_FILENAME_SIZE]) {
   info.last_modified = st.st_mtime;
   info.last_accessed = st.st_atime;
   info.creation_time = st.st_ctime;
-  memcpy(info.md5_checksum, fileMd5(file_name), 33);
+
+  md5_checksum = fileMd5(file_name);
+  if (md5_checksum) {
+    strncpy((char *)info.md5_checksum, (char *)md5_checksum, 33);
+    free(md5_checksum);
+  } else {
+    memset(info.md5_checksum, 0, 33);
+  }
 
   return info;
 }
@@ -123,7 +130,6 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count) {
     files[*file_count].creation_time = st.st_ctime;
     memcpy(files[*file_count].md5_checksum, fileMd5(file_path), 33);
     (*file_count)++;
-    
   }
 
   closedir(dir);
@@ -159,28 +165,33 @@ void print_file_list(FileInfo *files, int num_files) {
 }
 
 unsigned char *fileMd5(const char *filename) {
-    EVP_MD_CTX *mdctx;
-    unsigned char *md5_digest;
-    unsigned int md5_digest_len = 33;
-    FILE *inFile = fopen(filename, "rb");
-    int bytes;
-    unsigned char data[1024];
+  EVP_MD_CTX *mdctx;
+  unsigned char md5_digest[16];
+  unsigned char *md5_hex_digest = (unsigned char *)malloc(33);
+  unsigned int md5_digest_len;
+  FILE *inFile = fopen(filename, "rb");
+  int bytes;
+  unsigned char data[1024];
 
-    if (inFile == NULL) {
-        printf ("%s can't be opened.\n", filename);
-        return 0;
-    }
-    
-    mdctx = EVP_MD_CTX_new();
-    EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
+  if (inFile == NULL) {
+    printf("%s can't be opened.\n", filename);
+    return NULL;
+  }
 
-    while ((bytes = fread (data, 1, 1024, inFile)) != 0)
-        EVP_DigestUpdate(mdctx, data, bytes);
-    md5_digest = (unsigned char *)OPENSSL_malloc(md5_digest_len);
-    EVP_DigestFinal_ex(mdctx, md5_digest, &md5_digest_len);
-    EVP_MD_CTX_free(mdctx);
+  mdctx = EVP_MD_CTX_new();
+  EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
 
-    fclose (inFile);
+  while ((bytes = fread(data, 1, 1024, inFile)) != 0)
+    EVP_DigestUpdate(mdctx, data, bytes);
 
-    return md5_digest;
+  EVP_DigestFinal_ex(mdctx, md5_digest, &md5_digest_len);
+  EVP_MD_CTX_free(mdctx);
+  fclose(inFile);
+
+  for (int i = 0; i < 16; i++) {
+    sprintf((char *)&md5_hex_digest[i * 2], "%02x", md5_digest[i]);
+  }
+  md5_hex_digest[32] = '\0';
+
+  return md5_hex_digest;
 }
