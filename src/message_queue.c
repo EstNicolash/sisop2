@@ -71,14 +71,10 @@ int is_empty_msg_queue() {
 
 int is_valid_type(int type) {
   switch (type) {
-  case METADATA:
-  case END_OF_FILE:
-  case C_SEND_ID:
   case C_UPLOAD:
   case C_DOWNLOAD:
   case C_DELETE:
   case C_LIST_SERVER:
-  case C_EXIT:
   case C_GET_SYNC_DIR:
   case ANYTHING:
     return 0;

@@ -12,6 +12,6 @@ int client_download_file(int sockfd, char filename[MAX_FILENAME_SIZE],
 int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]);
 int client_list_server(int sockfd);
 int client_exit(int sockfd);
-int client_list_client(int sockfd);
+int client_list_client();
 int get_sync_dir(int sockfd);
 #endif

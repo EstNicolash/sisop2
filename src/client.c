@@ -2,9 +2,7 @@
 #include "../headers/file_manager.h"
 #include "../headers/messages_queue.h"
 #include <arpa/inet.h> // For inet_pton, htons, sockaddr_in
-#include <errno.h>
 #include <limits.h>
-#include <locale>
 #include <netinet/in.h> // For sockaddr_in
 #include <pthread.h>
 #include <stdio.h>
@@ -29,10 +27,11 @@
 int is_sync_running = 0;
 int is_inotify_running = 0;
 int is_messages_running = 0;
-pthread_mutex_t client_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t client_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_connect(const char *server_ip, int port);
 void *sync_dir_thread(void *arg);
 void *inotify_thread(void *arg);
+void *messages_thread(void *arg);
 void monitor_sync_dir(int sockfd);
 
 int main(int argc, char *argv[]) {
@@ -74,14 +73,23 @@ int main(int argc, char *argv[]) {
   pthread_t monitor_thread;
   if (pthread_create(&monitor_thread, NULL, inotify_thread, &sockfd) != 0) {
     perror("Failed to create thread");
-    return -1;
+    close(sockfd);
+    return EXIT_FAILURE;
   }
 
   pthread_t sync_thread;
   if (pthread_create(&sync_thread, NULL, sync_dir_thread, &sockfd) != 0) {
     perror("Failed to create sync thread");
     close(sockfd);
-    pthread_mutex_destroy(&client_sync_mutex);
+    // pthread_mutex_destroy(&client_sync_mutex);
+    return EXIT_FAILURE;
+  }
+
+  pthread_t msg_thread;
+  if (pthread_create(&msg_thread, NULL, messages_thread, &sockfd) != 0) {
+    perror("Failed to create sync thread");
+    close(sockfd);
+    // pthread_mutex_destroy(&client_sync_mutex);
     return EXIT_FAILURE;
   }
   while (1) {
@@ -94,30 +102,28 @@ int main(int argc, char *argv[]) {
     char *command = strtok(buffer, " ");
     char *filename = strtok(NULL, " ");
 
-    pthread_mutex_lock(&client_sync_mutex);
+    // pthread_mutex_lock(&client_sync_mutex);
     if (command && filename) {
-      if (strcmp(command, DOWNLOAD_STR) == 0) {
-        char cwd[MAX_FILENAME_SIZE];
+      char filename_info[MAX_PAYLOAD_SIZE];
+      strncpy(filename_info, filename, MAX_PAYLOAD_SIZE);
 
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-          printf("Current working directory: %s\n", cwd);
-        } else {
-          perror("getcwd() error");
-        }
-        client_download_file(sockfd, filename, cwd);
+      if (strcmp(command, DOWNLOAD_STR) == 0) {
+        msg_queue_insert(C_DOWNLOAD, filename_info);
 
       } else if (strcmp(command, UPLOAD_STR) == 0) {
-        client_upload_file(sockfd, filename);
+        msg_queue_insert(C_UPLOAD, filename_info);
+
       } else if (strcmp(command, DELETE_STR) == 0) {
-        client_delete_file(sockfd, filename);
+        msg_queue_insert(C_DELETE, filename_info);
       }
     } else if (command) {
       if (strcmp(command, LIST_CLIENT_STR) == 0) {
-        client_list_client(sockfd);
+        client_list_client();
       } else if (strcmp(command, LIST_SERVER_STR) == 0) {
-        client_list_server(sockfd);
+        msg_queue_insert(C_LIST_SERVER, "");
       } else if (strcmp(command, GET_SYNC_DIR_STR) == 0) {
-        get_sync_dir(sockfd);
+        msg_queue_insert(C_GET_SYNC_DIR, "");
+
       } else if (strcmp(command, EXIT_STR) == 0) {
         client_exit(sockfd);
         is_sync_running = -1;
@@ -126,24 +132,71 @@ int main(int argc, char *argv[]) {
         break;
       }
     }
-    pthread_mutex_unlock(&client_sync_mutex);
+    // pthread_mutex_unlock(&client_sync_mutex);
   }
   if (pthread_join(sync_thread, NULL) != 0) {
     perror("Failed to join sync thread");
   }
 
   if (pthread_join(monitor_thread, NULL) != 0) {
-    perror("Failed to join thread");
+    perror("Failed to join monitor thread");
   }
 
-  pthread_mutex_destroy(&client_sync_mutex);
+  if (pthread_join(msg_thread, NULL) != 0) {
+    perror("Failed to join message thread");
+  }
+
+  // pthread_mutex_destroy(&client_sync_mutex);
   close(sockfd);
   printf("Client stop\n");
   return 0;
 }
 
-void messages_thread(void *arg) {
-  while () {
+void *messages_thread(void *arg) {
+
+  int sockfd = *(int *)arg;
+
+  while (is_messages_running == 0) {
+
+    struct message_queue *msg = msg_queue_remove();
+
+    switch (msg->msg_type) {
+    case C_DOWNLOAD: {
+
+      char cwd[MAX_FILENAME_SIZE];
+
+      if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current working directory: %s\n", cwd);
+      } else {
+        perror("getcwd() error");
+      }
+      client_download_file(sockfd, msg->msg_info, cwd);
+      break;
+    }
+    case C_DELETE:
+      client_delete_file(sockfd, msg->msg_info);
+      break;
+    case C_UPLOAD:
+      client_upload_file(sockfd, msg->msg_info);
+      break;
+
+    case C_LIST_SERVER:
+      client_list_server(sockfd);
+      break;
+
+    case C_GET_SYNC_DIR: {
+      if (get_sync_dir(sockfd) != 0) {
+        fprintf(stderr, "Error syncing directories\n");
+      }
+      break;
+    }
+
+    default:
+      fprintf(stderr, "Sus type in queue: %d\n", msg->msg_type);
+      break;
+    }
+
+    free(msg);
   }
 }
 
@@ -157,12 +210,15 @@ void *inotify_thread(void *arg) {
 void *sync_dir_thread(void *arg) {
   int sockfd = *(int *)arg;
   while (is_sync_running == 0) {
+
+    msg_queue_insert(C_GET_SYNC_DIR, "");
+    /*
     pthread_mutex_lock(&client_sync_mutex);
     // printf("Starting sync...\n");
     if (get_sync_dir(sockfd) != 0) {
       fprintf(stderr, "Error syncing directories\n");
     }
-    pthread_mutex_unlock(&client_sync_mutex);
+    pthread_mutex_unlock(&client_sync_mutex);*/
     sleep(4);
   }
   printf("Sync thread exiting...\n");
@@ -189,7 +245,7 @@ void monitor_sync_dir(int sockfd) {
   char buf[4096];
   ssize_t numRead;
 
-  while (inotify_active == 1) {
+  while (is_inotify_running == 0) {
     numRead = read(inotifyFd, buf, sizeof(buf));
     if (numRead == 0)
       break;
@@ -203,35 +259,47 @@ void monitor_sync_dir(int sockfd) {
       char file_path[MAX_PAYLOAD_SIZE * 2];
       snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, event->name);
 
-      if (inotify_active != 1)
+      if (is_inotify_running != 0)
         break;
 
       if (event->mask & IN_CREATE) {
+
+        msg_queue_insert(C_UPLOAD, file_path);
+        /*
         pthread_mutex_lock(&client_sync_mutex);
         // printf("File created: %s\n", event->name);
         client_upload_file(sockfd, file_path);
-        pthread_mutex_unlock(&client_sync_mutex);
+        pthread_mutex_unlock(&client_sync_mutex);*/
       }
 
       if (event->mask & IN_MODIFY) {
+
+        msg_queue_insert(C_UPLOAD, file_path);
+        /*
         pthread_mutex_lock(&client_sync_mutex);
         // printf("File modified: %s\n", event->name);
         client_upload_file(sockfd, file_path);
-        pthread_mutex_unlock(&client_sync_mutex);
+        pthread_mutex_unlock(&client_sync_mutex);*/
       }
 
       if (event->mask & IN_DELETE) {
+
+        msg_queue_insert(C_DELETE, event->name);
+        /*
         pthread_mutex_lock(&client_sync_mutex);
         // printf("Deleting file: %s\n", event->name);
         client_delete_file(sockfd, event->name);
-        pthread_mutex_unlock(&client_sync_mutex);
+        pthread_mutex_unlock(&client_sync_mutex);*/
       }
 
       if (event->mask & IN_MOVED_FROM) {
+
+        msg_queue_insert(C_DELETE, event->name);
+        /*
         pthread_mutex_lock(&client_sync_mutex);
         // printf("Deleting file: %s\n", event->name);
         client_delete_file(sockfd, event->name);
-        pthread_mutex_unlock(&client_sync_mutex);
+        pthread_mutex_unlock(&client_sync_mutex);*/
       }
       p += sizeof(struct inotify_event) + event->len;
     }
