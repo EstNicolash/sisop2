@@ -4,15 +4,16 @@
 #import "pthread.h"
 
 extern pthread_mutex_t queue_mutex;
-
+extern struct message_queue *head;
 struct message_queue {
   int msg_type;
+  char msg_info[MAX_PAYLOAD_SIZE];
   struct message_queue *next;
 };
 
-struct message_queue *msg_queue_insert(int type);
+int msg_queue_insert(int type);
 struct message_queue *msg_queue_remove();
-int *msg_queue_is_empty();
+int is_empty_msg_queue();
 int is_valid_type(int type);
 
 #endif

@@ -3,9 +3,10 @@
 #include <stdlib.h>
 
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-static struct message_queue *head = NULL;
+struct message_queue *head = NULL;
 
-static struct message_queue *create_node(int type) {
+static struct message_queue *create_node(int type,
+                                         char msg_info[MAX_PAYLOAD_SIZE]) {
   struct message_queue *new_node =
       (struct message_queue *)malloc(sizeof(struct message_queue));
   if (!new_node) {
@@ -13,19 +14,20 @@ static struct message_queue *create_node(int type) {
     return NULL;
   }
   new_node->msg_type = type;
+  strncpy(new_node->msg_info, msg_info, MAX_PAYLOAD_SIZE);
   new_node->next = NULL;
   return new_node;
 }
 
-struct message_queue *msg_queue_insert(int type) {
+int msg_queue_insert(int type, char msg_info[MAX_PAYLOAD_SIZE]) {
   if (!is_valid_type(type)) {
     fprintf(stderr, "Invalid message type: %d\n", type);
-    return NULL;
+    return -1;
   }
 
-  struct message_queue *new_node = create_node(type);
+  struct message_queue *new_node = create_node(type, msg_info);
   if (!new_node)
-    return NULL;
+    return -1;
 
   pthread_mutex_lock(&queue_mutex);
 
@@ -41,7 +43,7 @@ struct message_queue *msg_queue_insert(int type) {
 
   pthread_mutex_unlock(&queue_mutex);
 
-  return new_node;
+  return 0;
 }
 
 struct message_queue *msg_queue_remove() {
@@ -54,16 +56,15 @@ struct message_queue *msg_queue_remove() {
 
   struct message_queue *temp = head;
   head = head->next;
-
   pthread_mutex_unlock(&queue_mutex);
   return temp;
 }
 
 int is_empty_msg_queue() {
-  int is_empty = 0;
+  int is_empty = -1;
   pthread_mutex_lock(&queue_mutex);
   if (head == NULL)
-    is_empty = -1;
+    is_empty = 0;
   pthread_mutex_unlock(&queue_mutex);
   return is_empty;
 }

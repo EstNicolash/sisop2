@@ -1,8 +1,10 @@
 #include "../headers/client_commands.h"
 #include "../headers/file_manager.h"
+#include "../headers/messages_queue.h"
 #include <arpa/inet.h> // For inet_pton, htons, sockaddr_in
 #include <errno.h>
 #include <limits.h>
+#include <locale>
 #include <netinet/in.h> // For sockaddr_in
 #include <pthread.h>
 #include <stdio.h>
@@ -24,8 +26,9 @@
 #define EXIT_STR "exit"
 #define EVENT_SIZE (sizeof(struct inotify_event))
 #define EVENT_BUF_LEN (1024 * (EVENT_SIZE + 16))
-int sync_active = 1;
-int inotify_active = 1;
+int is_sync_running = 0;
+int is_inotify_running = 0;
+int is_messages_running = 0;
 pthread_mutex_t client_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_connect(const char *server_ip, int port);
 void *sync_dir_thread(void *arg);
@@ -117,8 +120,9 @@ int main(int argc, char *argv[]) {
         get_sync_dir(sockfd);
       } else if (strcmp(command, EXIT_STR) == 0) {
         client_exit(sockfd);
-        sync_active = 0;
-        inotify_active = 0;
+        is_sync_running = -1;
+        is_inotify_running = -1;
+        is_messages_running = -1;
         break;
       }
     }
@@ -137,6 +141,12 @@ int main(int argc, char *argv[]) {
   printf("Client stop\n");
   return 0;
 }
+
+void messages_thread(void *arg) {
+  while () {
+  }
+}
+
 void *inotify_thread(void *arg) {
   int sockfd = *(int *)arg;
   monitor_sync_dir(sockfd);
@@ -146,7 +156,7 @@ void *inotify_thread(void *arg) {
 // Thread function to periodically sync directories
 void *sync_dir_thread(void *arg) {
   int sockfd = *(int *)arg;
-  while (sync_active == 1) {
+  while (is_sync_running == 0) {
     pthread_mutex_lock(&client_sync_mutex);
     // printf("Starting sync...\n");
     if (get_sync_dir(sockfd) != 0) {
