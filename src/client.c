@@ -117,12 +117,15 @@ int main(int argc, char *argv[]) {
         msg_queue_insert(C_DELETE, filename_info);
       }
     } else if (command) {
+
+      char msg[MAX_PAYLOAD_SIZE] = {""};
+
       if (strcmp(command, LIST_CLIENT_STR) == 0) {
         client_list_client();
       } else if (strcmp(command, LIST_SERVER_STR) == 0) {
-        msg_queue_insert(C_LIST_SERVER, "");
+        msg_queue_insert(C_LIST_SERVER, msg);
       } else if (strcmp(command, GET_SYNC_DIR_STR) == 0) {
-        msg_queue_insert(C_GET_SYNC_DIR, "");
+        msg_queue_insert(C_GET_SYNC_DIR, msg);
 
       } else if (strcmp(command, EXIT_STR) == 0) {
         client_exit(sockfd);
@@ -159,6 +162,9 @@ void *messages_thread(void *arg) {
   while (is_messages_running == 0) {
 
     struct message_queue *msg = msg_queue_remove();
+
+    if (msg == NULL)
+      continue;
 
     switch (msg->msg_type) {
     case C_DOWNLOAD: {
@@ -198,6 +204,8 @@ void *messages_thread(void *arg) {
 
     free(msg);
   }
+
+  return NULL;
 }
 
 void *inotify_thread(void *arg) {
@@ -208,10 +216,12 @@ void *inotify_thread(void *arg) {
 
 // Thread function to periodically sync directories
 void *sync_dir_thread(void *arg) {
-  int sockfd = *(int *)arg;
+  // int sockfd = *(int *)arg;
+
+  char msg[MAX_PAYLOAD_SIZE] = {""};
   while (is_sync_running == 0) {
 
-    msg_queue_insert(C_GET_SYNC_DIR, "");
+    msg_queue_insert(C_GET_SYNC_DIR, msg);
     /*
     pthread_mutex_lock(&client_sync_mutex);
     // printf("Starting sync...\n");

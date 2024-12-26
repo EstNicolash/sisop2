@@ -20,14 +20,16 @@ static struct message_queue *create_node(int type,
 }
 
 int msg_queue_insert(int type, char msg_info[MAX_PAYLOAD_SIZE]) {
-  if (!is_valid_type(type)) {
-    fprintf(stderr, "Invalid message type: %d\n", type);
+  if (is_valid_type(type) == -1) {
+    fprintf(stderr, "Invalid message type in queue insertion: %d\n", type);
     return -1;
   }
 
   struct message_queue *new_node = create_node(type, msg_info);
-  if (!new_node)
+  if (!new_node) {
+    fprintf(stderr, "Error creating new node\n");
     return -1;
+  }
 
   pthread_mutex_lock(&queue_mutex);
 
