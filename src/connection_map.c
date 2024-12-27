@@ -1,7 +1,7 @@
 #include "../headers/connection_map.h"
 
 ConnectionMap connection_map;
-pthread_mutex_t manage_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t connection_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void connection_map_init() {
   for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -9,21 +9,22 @@ void connection_map_init() {
   }
 }
 
-int hash_function(char user_id[MAX_PAYLOAD_SIZE]) {
+int hash_function(const char user_id[MAX_FILENAME_SIZE]) {
   unsigned long hash = 5381;
-  for (int i = 0; i < MAX_PAYLOAD_SIZE && user_id[i] != '\0'; i++) {
+  for (int i = 0; i < MAX_FILENAME_SIZE && user_id[i] != '\0'; i++) {
     hash = ((hash << 5) + hash) + user_id[i];
   }
   return hash % MAX_CLIENTS;
 }
 
-void connection_map_insert(char user_id[MAX_PAYLOAD_SIZE], int normal_sockfd,
-                           int propagation_sockfd) {
+void connection_map_insert(const char user_id[MAX_FILENAME_SIZE],
+                           const int normal_sockfd,
+                           const int propagation_sockfd) {
   pthread_mutex_lock(&connection_mutex);
 
   int index = hash_function(user_id);
   ConnectionInfo info = {0};
-  strcpy(info.user_id, user_id);
+  strncpy(info.user_id, user_id, MAX_FILENAME_SIZE);
   info.normal_sockfd = normal_sockfd;
   info.propagation_sockfd = propagation_sockfd;
 
@@ -33,7 +34,8 @@ void connection_map_insert(char user_id[MAX_PAYLOAD_SIZE], int normal_sockfd,
   pthread_mutex_unlock(&connection_mutex);
 }
 
-void connection_map_delete(char user_id[MAX_PAYLOAD_SIZE], int normal_sockfd) {
+void connection_map_delete(const char user_id[MAX_FILENAME_SIZE],
+                           const int normal_sockfd) {
   pthread_mutex_lock(&connection_mutex);
 
   int index = hash_function(user_id);
@@ -46,7 +48,8 @@ void connection_map_delete(char user_id[MAX_PAYLOAD_SIZE], int normal_sockfd) {
   pthread_mutex_unlock(&connection_mutex);
 }
 
-int connection_map_count_user_connections(char user_id[MAX_PAYLOAD_SIZE]) {
+int connection_map_count_user_connections(
+    const char user_id[MAX_FILENAME_SIZE]) {
   pthread_mutex_lock(&connection_mutex);
 
   int count = 0;
@@ -59,6 +62,24 @@ int connection_map_count_user_connections(char user_id[MAX_PAYLOAD_SIZE]) {
 
   pthread_mutex_unlock(&connection_mutex);
   return count;
+}
+
+ConnectionInfo *
+connection_map_search_other(const char user_id[MAX_FILENAME_SIZE],
+                            const int normal_sockfd) {
+  pthread_mutex_lock(&connection_mutex);
+
+  int index = hash_function(user_id);
+  ConnectionInfo *other_connection = NULL;
+
+  if (connection_map.map[index] != NULL) {
+    // Search using connection_list_search_other
+    other_connection = connection_list_search_other(connection_map.map[index],
+                                                    user_id, normal_sockfd);
+  }
+
+  pthread_mutex_unlock(&connection_mutex);
+  return other_connection;
 }
 
 ConnectionList *connection_list_insert(ConnectionList *list,
@@ -79,7 +100,7 @@ ConnectionList *connection_list_insert(ConnectionList *list,
   return new_node;
 }
 ConnectionList *connection_list_delete(ConnectionList *list,
-                                       int normal_sockfd) {
+                                       const int normal_sockfd) {
   ConnectionList *current = list;
   ConnectionList *prev = NULL;
   while (current != NULL) {
@@ -102,8 +123,8 @@ ConnectionList *connection_list_delete(ConnectionList *list,
   return list;
 }
 
-int connection_list_count_user_connections(ConnectionList *list,
-                                           char user_id[MAX_PAYLOAD_SIZE]) {
+int connection_list_count_user_connections(
+    ConnectionList *list, const char user_id[MAX_FILENAME_SIZE]) {
   int count = 0;
   ConnectionList *current = list;
   while (current != NULL) {
@@ -115,9 +136,10 @@ int connection_list_count_user_connections(ConnectionList *list,
   return count;
 }
 
-ConnectionInfo *connection_list_search_other(ConnectionList *list,
-                                             char user_id[MAX_PAYLOAD_SIZE],
-                                             int normal_sockfd) {
+ConnectionInfo *
+connection_list_search_other(ConnectionList *list,
+                             const char user_id[MAX_FILENAME_SIZE],
+                             const int normal_sockfd) {
   ConnectionList *current = list;
   while (current != NULL) {
     if (strcmp(current->connection->user_id, user_id) == 0 &&

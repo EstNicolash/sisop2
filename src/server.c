@@ -7,6 +7,7 @@ void *client_handler(void *arg);
 #define PORT 48487
 int main() {
   int server_fd = server_setup(PORT);
+  connection_map_init();
 
   while (1) {
     struct sockaddr_in client_addr;
@@ -38,7 +39,6 @@ int main() {
 int server_setup(int port) {
   int sockfd;
   struct sockaddr_in serv_addr;
-  client_count = 0;
 
   // Create socket
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -87,8 +87,7 @@ void *client_handler(void *arg) {
 
   create_directory(user_id);
 
-  // Check and update connection count for this client
-  if (update_connection_count(user_id, 1) != 0) {
+  if (add_connection(user_id, sockfd, 0) != 0) {
     printf("Client %s has reached the maximum connection limit. Closing "
            "connection.\n",
            user_id);
@@ -138,8 +137,7 @@ void *client_handler(void *arg) {
   }
 end:
 
-  update_connection_count(user_id, -1);
-
+  remove_connection(user_id, sockfd);
   close(sockfd);
   printf("Connection with client %s closed.\n", user_id);
   return NULL;

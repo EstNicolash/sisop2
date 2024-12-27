@@ -1,11 +1,8 @@
 #include "../headers/server_handlers.h"
+#include "../headers/connection_map.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
-Client manage_clients_connections[MAX_CLIENTS] = {0};
-int client_count = 0;
-pthread_mutex_t manage_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
 
@@ -113,37 +110,23 @@ int server_handles_get_sync_dir(int sockfd) {
   return 0;
 }
 
-int update_connection_count(const char *user_id, int delta) {
-  pthread_mutex_lock(&manage_clients_mutex);
+int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
+                   int propagation_sockfd) {
 
-  for (int i = 0; i < client_count; i++) {
-    if (strcmp(manage_clients_connections[i].user_id, user_id) == 0) {
-      if (delta > 0 && manage_clients_connections[i].connection_count >=
-                           MAX_CONNECTIONS_PER_CLIENT) {
-        pthread_mutex_unlock(&manage_clients_mutex);
-        return -1;
-      }
+  if (connection_map_count_user_connections(user_id) >= 2)
+    return -1;
 
-      manage_clients_connections[i].connection_count += delta;
+  connection_map_insert(user_id, normal_sockfd, propagation_sockfd);
 
-      if (manage_clients_connections[i].connection_count <= 0) {
-        manage_clients_connections[i] =
-            manage_clients_connections[--client_count];
-      }
-
-      pthread_mutex_unlock(&manage_clients_mutex);
-      return 0;
-    }
-  }
-
-  if (delta > 0 && client_count < MAX_CLIENTS) {
-    strcpy(manage_clients_connections[client_count].user_id, user_id);
-    manage_clients_connections[client_count].connection_count = delta;
-    client_count++;
-    pthread_mutex_unlock(&manage_clients_mutex);
-    return 0;
-  }
-
-  pthread_mutex_unlock(&manage_clients_mutex);
-  return -1;
+  return 0;
 }
+
+int remove_connection(const char user_id[MAX_FILENAME_SIZE],
+                      int normal_sockfd) {
+
+  connection_map_delete(user_id, normal_sockfd);
+
+  return 0;
+}
+
+void map_init() { connection_map_init(); }

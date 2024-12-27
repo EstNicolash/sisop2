@@ -1,5 +1,6 @@
 #ifndef SERVER_HANDLER_H
 #define SERVER_HANDLER_H
+#include "connection_map.h"
 #include "file_manager.h"
 #include "protocol.h"
 #include <netinet/in.h>
@@ -23,5 +24,6 @@ int server_handles_get_sync_dir(int sockfd);
 int remove_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd);
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
                    int propagation_sockfd);
+void map_init();
 
 #endif
