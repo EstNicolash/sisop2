@@ -14,4 +14,5 @@ int client_list_server(int sockfd);
 int client_exit(int sockfd);
 int client_list_client();
 int get_sync_dir(int sockfd);
+int rcv_propagation(int sockfd);
 #endif

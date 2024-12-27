@@ -78,6 +78,7 @@ int is_valid_type(int type) {
   case C_DELETE:
   case C_LIST_SERVER:
   case C_GET_SYNC_DIR:
+  case S_PROPAGATE:
   case ANYTHING:
     return 0;
   default:

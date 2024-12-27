@@ -24,8 +24,10 @@
 #define C_LIST_SERVER 24
 #define C_EXIT 25
 #define C_GET_SYNC_DIR 29
-#define ANYTHING 100
 
+#define S_PROPAGATE 30
+
+#define ANYTHING 100
 // Estrutura para troca de mensagens de arquivo
 typedef struct packet {
   uint16_t type;                   // Tipo do pacote (ex: DATA, CMD)

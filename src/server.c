@@ -7,6 +7,7 @@ void *client_handler(void *arg);
 #define PORT 48487
 int main() {
   int server_fd = server_setup(PORT);
+  int client_propagation_fd = server_setup(PORT + 1);
   connection_map_init();
 
   while (1) {
@@ -21,9 +22,9 @@ int main() {
       free(client_fd);
       continue;
     }
-
+    int sockets[2] = {*client_fd, client_propagation_fd};
     pthread_t tid;
-    if (pthread_create(&tid, NULL, client_handler, client_fd) != 0) {
+    if (pthread_create(&tid, NULL, client_handler, sockets) != 0) {
       perror("Thread creation failed");
       close(*client_fd);
       free(client_fd);
@@ -71,8 +72,16 @@ int server_setup(int port) {
 }
 
 void *client_handler(void *arg) {
-  int sockfd = *((int *)arg);
+
+  int *sockets = (int *)arg;
+  int sockfd = sockets[0];
+  int propagation_listen_fd = sockets[1];
   free(arg);
+
+  struct sockaddr_in propagation_addr;
+  socklen_t len = sizeof(propagation_addr);
+  int propagation_sockfd =
+      accept(propagation_listen_fd, (struct sockaddr *)&propagation_addr, &len);
 
   char user_id[MAX_FILENAME_SIZE] = {0};
 
@@ -87,7 +96,7 @@ void *client_handler(void *arg) {
 
   create_directory(user_id);
 
-  if (add_connection(user_id, sockfd, 0) != 0) {
+  if (add_connection(user_id, sockfd, propagation_sockfd) != 0) {
     printf("Client %s has reached the maximum connection limit. Closing "
            "connection.\n",
            user_id);

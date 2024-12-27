@@ -3,6 +3,22 @@
 int is_sync_running = 0;
 int is_inotify_running = 0;
 int is_messages_running = 0;
+int is_rcv_propagation_running = 0;
+
+void *rcv_propagation(void *arg) {
+
+  int sockfd = *(int *)arg;
+
+  packet pkt;
+  char msg[MAX_PAYLOAD_SIZE] = {""};
+
+  while (is_rcv_propagation_running == 0) {
+    rcv_message(sockfd, S_PROPAGATE, 0, &pkt);
+    msg_queue_insert(S_PROPAGATE, msg);
+  }
+
+  return NULL;
+}
 
 void *messages_thread(void *arg) {
 

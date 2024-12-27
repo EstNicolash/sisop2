@@ -13,9 +13,13 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                        const char filename[MAX_FILENAME_SIZE]);
 
 int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
+
 int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
+
 int server_handles_list_server(int sockfd,
                                const char user_id[MAX_FILENAME_SIZE]);
 int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]);

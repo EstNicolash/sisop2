@@ -27,6 +27,10 @@ int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
 
   save_file(metadada.filename, user_id, file_buffer, size);
 
+  if (propagate_to_client(sockfd, user_id, metadada.filename) != 0) {
+    fprintf(stderr, "Error propagating to client\n");
+  }
+
   free(file_buffer);
 
   return 1;
@@ -110,6 +114,35 @@ int server_handles_get_sync_dir(int sockfd) {
   return 0;
 }
 
+int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                        const char filename[MAX_FILENAME_SIZE]) {
+
+  packet msg = create_packet(S_PROPAGATE, 0, 0, "p1", 2);
+
+  ConnectionInfo *info = malloc(sizeof(ConnectionInfo));
+
+  info = connection_map_search_other(user_id, sockfd);
+
+  if (info == NULL) {
+    fprintf(stderr, "No connection\n");
+    return -1;
+  }
+
+  if (send_message(info->propagation_sockfd, msg) != 0) {
+    perror("Error sending propagate msg\n");
+    return -1;
+  }
+
+  if (rcv_message(sockfd, OK, S_PROPAGATE, &msg) != 0) {
+    perror("Error rcv_message ack propagate\n");
+    return -1;
+  }
+
+  char file_path[MAX_PAYLOAD_SIZE * 2];
+  snprintf(file_path, sizeof(file_path), "%s/%s", user_id, filename);
+
+  return send_file(sockfd, file_path);
+}
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
                    int propagation_sockfd) {
 
