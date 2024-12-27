@@ -11,7 +11,8 @@
 typedef struct {
   char user_id[MAX_FILENAME_SIZE];
   int normal_sockfd;
-  int propagation_sockfd;
+  int propagation_read_sockfd;
+  int propagation_write_sockfd;
 } ConnectionInfo;
 
 typedef struct connection_list {
@@ -48,7 +49,8 @@ void connection_map_delete(const char user_id[MAX_FILENAME_SIZE],
 
 void connection_map_insert(const char user_id[MAX_FILENAME_SIZE],
                            const int normal_sockfd,
-                           const int propagation_sockfd);
+                           const int propagation_read_sockfd,
+                           const int propagation_write_sockfd);
 
 int connection_map_count_user_connections(
     const char user_id[MAX_FILENAME_SIZE]);

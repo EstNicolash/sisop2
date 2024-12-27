@@ -19,14 +19,16 @@ int hash_function(const char user_id[MAX_FILENAME_SIZE]) {
 
 void connection_map_insert(const char user_id[MAX_FILENAME_SIZE],
                            const int normal_sockfd,
-                           const int propagation_sockfd) {
+                           const int propagation_read_sockfd,
+                           const int propagation_write_sockfd) {
   pthread_mutex_lock(&connection_mutex);
 
   int index = hash_function(user_id);
   ConnectionInfo info = {0};
   strncpy(info.user_id, user_id, MAX_FILENAME_SIZE);
   info.normal_sockfd = normal_sockfd;
-  info.propagation_sockfd = propagation_sockfd;
+  info.propagation_read_sockfd = propagation_read_sockfd;
+  info.propagation_write_sockfd = propagation_write_sockfd;
 
   connection_map.map[index] =
       connection_list_insert(connection_map.map[index], info);

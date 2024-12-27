@@ -7,7 +7,8 @@ void *client_handler(void *arg);
 #define PORT 48487
 int main() {
   int server_fd = server_setup(PORT);
-  int client_propagation_fd = server_setup(PORT + 1);
+  int client_propagation_read_fd = server_setup(PORT + 1);
+  int client_propagation_write_fd = server_setup(PORT + 2);
   connection_map_init();
 
   while (1) {
@@ -22,7 +23,17 @@ int main() {
       free(client_fd);
       continue;
     }
-    int sockets[2] = {*client_fd, client_propagation_fd};
+
+    int *sockets = malloc(3 * sizeof(int));
+    if (sockets == NULL) {
+      perror("malloc failed");
+      return -1;
+    }
+
+    sockets[0] = *client_fd;
+    sockets[1] = client_propagation_read_fd;
+    sockets[2] = client_propagation_write_fd;
+
     pthread_t tid;
     if (pthread_create(&tid, NULL, client_handler, sockets) != 0) {
       perror("Thread creation failed");
@@ -75,13 +86,19 @@ void *client_handler(void *arg) {
 
   int *sockets = (int *)arg;
   int sockfd = sockets[0];
-  int propagation_listen_fd = sockets[1];
+  int propagation_r_listen_fd = sockets[1];
+  int propagation_w_listen_fd = sockets[2];
   free(arg);
 
-  struct sockaddr_in propagation_addr;
-  socklen_t len = sizeof(propagation_addr);
-  int propagation_sockfd =
-      accept(propagation_listen_fd, (struct sockaddr *)&propagation_addr, &len);
+  struct sockaddr_in propagation_r_addr;
+  socklen_t len = sizeof(propagation_r_addr);
+  int propagation_read_sockfd = accept(
+      propagation_r_listen_fd, (struct sockaddr *)&propagation_r_addr, &len);
+
+  struct sockaddr_in propagation_w_addr;
+  socklen_t len2 = sizeof(propagation_w_addr);
+  int propagation_write_sockfd = accept(
+      propagation_w_listen_fd, (struct sockaddr *)&propagation_w_addr, &len2);
 
   char user_id[MAX_FILENAME_SIZE] = {0};
 
@@ -96,7 +113,8 @@ void *client_handler(void *arg) {
 
   create_directory(user_id);
 
-  if (add_connection(user_id, sockfd, propagation_sockfd) != 0) {
+  if (add_connection(user_id, sockfd, propagation_read_sockfd,
+                     propagation_write_sockfd) != 0) {
     printf("Client %s has reached the maximum connection limit. Closing "
            "connection.\n",
            user_id);

@@ -134,40 +134,49 @@ int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
     return -1;
   }
 
-  if (send_message(info->propagation_sockfd, msg) != 0) {
+  // fprintf(stderr, "Propagate from: %d", sockfd);
+  // fprintf(stderr, "Popagate to: %d,%d\n", info->normal_sockfd,
+  //        info->propagation_sockfd);
+
+  if (send_message(info->propagation_read_sockfd, msg) != 0) {
     perror("Error sending propagate msg\n");
     return -1;
   }
-
+  fprintf(stderr, "Teste 1\n");
   // rcv Ack client command
-  if (rcv_message(info->normal_sockfd, OK, S_PROPAGATE, &msg) != 0) {
+  if (rcv_message(info->propagation_write_sockfd, OK, S_PROPAGATE, &msg) != 0) {
     perror("Error rcv_message ack propagate\n");
     return -1;
   }
 
+  fprintf(stderr, "Teste 2\n");
   char file_path[MAX_PAYLOAD_SIZE * 2];
   snprintf(file_path, sizeof(file_path), "%s/%s", user_id, filename);
 
-  if (send_metadata(info->normal_sockfd, file_path) != 0) {
+  if (send_metadata(info->propagation_write_sockfd, file_path) != 0) {
     fprintf(stderr, "error or equal checksum\n");
     return -1;
   }
 
+  fprintf(stderr, "Teste 4\n");
   // Ack receive
-  if (rcv_message(info->normal_sockfd, OK, S_PROPAGATE, &msg) != 0) {
-    perror("Error rcv_message ack propagate\n");
+  if (rcv_message(info->propagation_write_sockfd, OK, S_PROPAGATE, &msg) != 0) {
+    perror("Error rcv_message ack propagate or checksum or no file\n");
     return -1;
   }
 
-  return send_file(info->normal_sockfd, file_path);
+  fprintf(stderr, "Teste 5\n");
+  return send_file(info->propagation_write_sockfd, file_path);
 }
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
-                   int propagation_sockfd) {
+                   int propagation_r_sockfd, int propagation_w_sockfd) {
 
+  // fprintf(stderr, "Sockets: %d,%d\n", normal_sockfd, propagation_sockfd);
   if (connection_map_count_user_connections(user_id) >= 2)
     return -1;
 
-  connection_map_insert(user_id, normal_sockfd, propagation_sockfd);
+  connection_map_insert(user_id, normal_sockfd, propagation_r_sockfd,
+                        propagation_w_sockfd);
 
   return 0;
 }

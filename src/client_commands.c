@@ -9,47 +9,64 @@ int client_exit(int sockfd) {
   return 0;
 }
 
-int client_rcv_propagation(int sockfd,
-                           const char client_id[MAX_FILENAME_SIZE]) {
+int client_rcv_propagation(int sockfd) {
 
   packet ack = create_packet(OK, S_PROPAGATE, 0, "ok", 2);
 
+  fprintf(stderr, "Teste A\n");
   // Send ack
   if (send_message(sockfd, ack) != 0) {
     perror("Error sending ack msg\n");
     return -1;
   }
 
+  fprintf(stderr, "Teste B\n");
   // rcv metada
   //
   FileInfo server_file_metada = rcv_metadata(sockfd);
 
-  if (server_file_metada.file_size == 0)
-    return -1;
+  if (server_file_metada.file_size == 0) {
 
-  char file_path[MAX_PAYLOAD_SIZE * 2];
-  snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR,
-           server_file_metada.filename);
-
-  unsigned char *local_file_checksum = fileMd5(file_path);
-
-  if (strcmp((char *)local_file_checksum,
-             (char *)server_file_metada.md5_checksum) == 0) {
     packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
     send_message(sockfd, ack_err);
     return -1;
   }
 
-  send_message(sockfd, ack);
+  char file_path[MAX_PAYLOAD_SIZE * 2];
+  snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR,
+           server_file_metada.filename);
 
-  uint32_t out_total_size;
-  FileInfo fileinfo;
+  FILE *file = fopen(file_path, "r");
+  if (file) {
+    fclose(file);
 
-  char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
-  save_file(fileinfo.filename, SYNC_DIR, file_data, out_total_size);
-  free(file_data);
+    unsigned char *local_file_checksum = fileMd5(file_path);
 
-  return 0;
+    fprintf(stderr, "Teste C\n");
+    if (strcmp((char *)local_file_checksum,
+               (char *)server_file_metada.md5_checksum) == 0) {
+      packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
+      send_message(sockfd, ack_err);
+      return -1;
+    }
+
+    send_message(sockfd, ack);
+
+    uint32_t out_total_size;
+    FileInfo fileinfo;
+
+    fprintf(stderr, "Teste D\n");
+    char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
+    char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
+    save_file(fileinfo.filename, dir, file_data, out_total_size);
+    free(file_data);
+
+    return 0;
+  }
+
+  packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
+  send_message(sockfd, ack_err);
+  return -1;
 }
 int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]) {
 
@@ -87,6 +104,7 @@ int client_upload_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
   int result = send_file(sockfd, filename);
 
   // RCV ACK END
+  //
   if (rcv_message(sockfd, OK, C_UPLOAD, &upload_msg) != 0) {
     fprintf(stderr, "Error rcv ack in upload\n");
     return -1;

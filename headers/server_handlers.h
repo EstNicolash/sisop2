@@ -27,7 +27,7 @@ int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
 int server_handles_get_sync_dir(int sockfd);
 int remove_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd);
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
-                   int propagation_sockfd);
+                   int propagation_r_sockfd, int propagation_w_sockfd);
 void map_init();
 
 #endif

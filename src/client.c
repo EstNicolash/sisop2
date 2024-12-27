@@ -20,11 +20,12 @@
 #define LIST_CLIENT_STR "list_client"
 #define GET_SYNC_DIR_STR "get_sync_dir"
 #define EXIT_STR "exit"
+
 // pthread_mutex_t client_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_connect(const char *server_ip, int port);
 
 int main(int argc, char *argv[]) {
-  int sockfd;
+  int sockfd, prop_read_sockfd, prop_write_sockfd;
   char buffer[BUFFER_SIZE];
   char client_id[BUFFER_SIZE];
   char server_ip[BUFFER_SIZE];
@@ -51,6 +52,18 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
+  prop_read_sockfd = client_connect(server_ip, port + 1);
+  if (prop_read_sockfd < 0) {
+    exit(0);
+  }
+
+  prop_write_sockfd = client_connect(server_ip, port + 2);
+  if (prop_write_sockfd < 0) {
+    exit(0);
+  }
+
+  // printf("SOCKETS: %d,%d\n", sockfd, prop_read_sockfd);
+
   if (client_send_id(sockfd, client_id) != 0) {
     fprintf(stderr, "Error sending ID\n");
     close(sockfd);
@@ -74,13 +87,31 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  int *sockets = malloc(2 * sizeof(int));
+  if (sockets == NULL) {
+    perror("malloc failed");
+    return -1;
+  }
+
+  sockets[0] = sockfd;
+  sockets[1] = prop_write_sockfd;
   pthread_t msg_thread;
-  if (pthread_create(&msg_thread, NULL, messages_thread, &sockfd) != 0) {
+  if (pthread_create(&msg_thread, NULL, messages_thread, sockets) != 0) {
     perror("Failed to create sync thread");
     close(sockfd);
     // pthread_mutex_destroy(&client_sync_mutex);
     return EXIT_FAILURE;
   }
+
+  pthread_t prop_thread;
+  if (pthread_create(&prop_thread, NULL, rcv_propagation_thread,
+                     &prop_read_sockfd) != 0) {
+    perror("Failed to create sync thread");
+    close(sockfd);
+    // pthread_mutex_destroy(&client_sync_mutex);
+    return EXIT_FAILURE;
+  }
+
   while (1) {
     printf("Enter the message: \n");
     bzero(buffer, BUFFER_SIZE);
@@ -127,20 +158,32 @@ int main(int argc, char *argv[]) {
     }
     // pthread_mutex_unlock(&client_sync_mutex);
   }
+
+  fprintf(stderr, "1...\n");
   if (pthread_join(sync_thread, NULL) != 0) {
     perror("Failed to join sync thread");
   }
 
+  fprintf(stderr, "2...\n");
   if (pthread_join(monitor_thread, NULL) != 0) {
     perror("Failed to join monitor thread");
   }
 
+  fprintf(stderr, "3...\n");
   if (pthread_join(msg_thread, NULL) != 0) {
     perror("Failed to join message thread");
   }
 
+  fprintf(stderr, "4...\n");
+  if (pthread_join(prop_thread, NULL) != 0) {
+    perror("Failed to join message thread");
+  }
+
+  fprintf(stderr, "5...\n");
   // pthread_mutex_destroy(&client_sync_mutex);
   close(sockfd);
+  close(prop_write_sockfd);
+  close(prop_read_sockfd);
   printf("Client stop\n");
   return 0;
 }

@@ -22,7 +22,10 @@ void *rcv_propagation_thread(void *arg) {
 
 void *messages_thread(void *arg) {
 
-  int sockfd = *(int *)arg;
+  int *sockets = (int *)arg;
+  int sockfd = sockets[0];
+  int prop_sockfd = sockets[1];
+  free(arg);
 
   while (is_messages_running == 0) {
 
@@ -63,7 +66,7 @@ void *messages_thread(void *arg) {
     }
 
     case S_PROPAGATE:
-      rcv_propagation(sockfd);
+      client_rcv_propagation(prop_sockfd);
       break;
 
     default:
@@ -178,7 +181,7 @@ void *sync_dir_thread(void *arg) {
       fprintf(stderr, "Error syncing directories\n");
     }
     pthread_mutex_unlock(&client_sync_mutex);*/
-    sleep(4);
+    sleep(300);
   }
   printf("Sync thread exiting...\n");
   return NULL;
