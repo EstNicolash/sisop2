@@ -45,7 +45,8 @@ int send_message(int sockfd, packet pkt);
 // Receive a packet and check the type and seqn with the intended received
 // packet
 int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt);
-
+int send_metadata(int sockfd, const char filename[MAX_FILENAME_SIZE]);
+FileInfo rcv_metadata(int sockfd);
 int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]);
 char *receive_file(int sockfd, uint32_t *out_total_size, FileInfo *fileinfo);
 int send_file_list(int sockfd, const char dir[MAX_FILENAME_SIZE]);

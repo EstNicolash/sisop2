@@ -19,8 +19,11 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
 }
 
 int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
+
+  // Send ACK start
   packet ack = create_packet(OK, C_UPLOAD, 0, "ok", 2);
   send_message(sockfd, ack);
+
   FileInfo metadada;
   uint32_t size = 0;
   char *file_buffer = receive_file(sockfd, &size, &metadada);
@@ -33,6 +36,9 @@ int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
 
   free(file_buffer);
 
+  // SEND ACK END
+  ack = create_packet(OK, C_UPLOAD, 0, "ok", 2);
+  send_message(sockfd, ack);
   return 1;
 }
 
@@ -117,7 +123,7 @@ int server_handles_get_sync_dir(int sockfd) {
 int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                         const char filename[MAX_FILENAME_SIZE]) {
 
-  packet msg = create_packet(S_PROPAGATE, 0, 0, "p1", 2);
+  packet msg = create_packet(S_PROPAGATE, 0, 0, "ok", 2);
 
   ConnectionInfo *info = malloc(sizeof(ConnectionInfo));
 
@@ -133,7 +139,8 @@ int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
     return -1;
   }
 
-  if (rcv_message(sockfd, OK, S_PROPAGATE, &msg) != 0) {
+  // rcv Ack client command
+  if (rcv_message(info->normal_sockfd, OK, S_PROPAGATE, &msg) != 0) {
     perror("Error rcv_message ack propagate\n");
     return -1;
   }
@@ -141,7 +148,18 @@ int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
   char file_path[MAX_PAYLOAD_SIZE * 2];
   snprintf(file_path, sizeof(file_path), "%s/%s", user_id, filename);
 
-  return send_file(sockfd, file_path);
+  if (send_metadata(info->normal_sockfd, file_path) != 0) {
+    fprintf(stderr, "error or equal checksum\n");
+    return -1;
+  }
+
+  // Ack receive
+  if (rcv_message(info->normal_sockfd, OK, S_PROPAGATE, &msg) != 0) {
+    perror("Error rcv_message ack propagate\n");
+    return -1;
+  }
+
+  return send_file(info->normal_sockfd, file_path);
 }
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
                    int propagation_sockfd) {

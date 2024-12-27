@@ -5,7 +5,7 @@ int is_inotify_running = 0;
 int is_messages_running = 0;
 int is_rcv_propagation_running = 0;
 
-void *rcv_propagation(void *arg) {
+void *rcv_propagation_thread(void *arg) {
 
   int sockfd = *(int *)arg;
 
@@ -61,6 +61,10 @@ void *messages_thread(void *arg) {
       }
       break;
     }
+
+    case S_PROPAGATE:
+      rcv_propagation(sockfd);
+      break;
 
     default:
       fprintf(stderr, "Sus type in queue: %d\n", msg->msg_type);

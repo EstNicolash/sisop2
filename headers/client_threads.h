@@ -13,7 +13,7 @@ extern int is_rcv_propagation_running;
 void *sync_dir_thread(void *arg);
 void *inotify_thread(void *arg);
 void *messages_thread(void *arg);
-void *rcv_propagation(void *arg);
+void *rcv_propagation_thread(void *arg);
 void monitor_sync_dir(int sockfd);
 
 #endif

@@ -89,11 +89,10 @@ start:
   return 0;
 }
 
-int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
-  //  fprintf(stderr, "Send_file(%d, %s)\n", sockfd, file_name);
+int send_metadata(int sockfd, const char filename[MAX_FILENAME_SIZE]) {
 
   packet error_pkt = create_packet(ERROR, ERROR, 0, "error", 4);
-  int file_fd = open(file_name, O_RDONLY);
+  int file_fd = open(filename, O_RDONLY);
   if (file_fd < 0) {
     perror("File opening failed");
     send_message(sockfd, error_pkt);
@@ -111,13 +110,13 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   uint32_t total_size = (uint32_t)file_stat.st_size;
 
   if (total_size == 0) {
-    printf("Error: File is empty or could not determine size: %s\n", file_name);
+    printf("Error: File is empty or could not determine size: %s\n", filename);
     send_message(sockfd, error_pkt);
     close(file_fd);
     return -1;
   }
 
-  FileInfo file_info = get_file_info(file_name);
+  FileInfo file_info = get_file_info(filename);
   file_info.file_size = total_size;
   char *base_name = basename(file_info.filename);
   strncpy(file_info.filename, base_name, MAX_FILENAME_SIZE);
@@ -133,13 +132,39 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
+  return 0;
+}
+FileInfo rcv_metadata(int sockfd) {
+
+  packet metadata_pkt;
+
+  FileInfo file_info;
+
+  file_info.file_size = 0;
+  if (rcv_message(sockfd, METADATA, 0, &metadata_pkt) != 0) {
+    printf("Error receiving file metadata or connection closed.\n");
+    return file_info;
+  }
+
+  memcpy(&file_info, metadata_pkt._payload, sizeof(FileInfo));
+
+  return file_info;
+}
+
+int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
+  //  fprintf(stderr, "Send_file(%d, %s)\n", sockfd, file_name);
+
   // printf("Metadata sended\n");
   size_t read_size;
   char buffer[MAX_PAYLOAD_SIZE];
 
+  if (send_metadata(sockfd, file_name) != 0)
+    return -1;
+
+  int file_fd = open(file_name, O_RDONLY);
   ssize_t total = 0;
+
   while ((read_size = read(file_fd, buffer, MAX_PAYLOAD_SIZE)) > 0) {
-    // Send the raw bytes directly, without creating a packet structure
     ssize_t bytes_sent = send(sockfd, buffer, read_size, 0);
 
     if (bytes_sent < 0) {
@@ -177,8 +202,6 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   return 0;
 }
 
-///
-////
 char *receive_file(int socket_fd, uint32_t *out_total_size,
                    FileInfo *file_info) {
 
@@ -186,20 +209,14 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
   uint32_t received_size = 0;
 
   // Receive Metadata
-  packet metadata_pkt;
-  if (rcv_message(socket_fd, METADATA, 0, &metadata_pkt) != 0) {
-    printf("Error receiving file metadata or connection closed.\n");
-    return NULL;
-  }
-  // printf("Metadata Received\n");
-  memcpy(file_info, metadata_pkt._payload, sizeof(FileInfo));
+  *file_info = rcv_metadata(socket_fd);
 
   // printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
   //      file_info->last_modified);
 
   // Prepare to receive file data
 
-  total_size = metadata_pkt.total_size;
+  total_size = file_info->file_size;
   *out_total_size = total_size;
 
   char *file_data = malloc(total_size);

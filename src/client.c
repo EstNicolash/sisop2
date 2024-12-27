@@ -121,6 +121,7 @@ int main(int argc, char *argv[]) {
         is_sync_running = -1;
         is_inotify_running = -1;
         is_messages_running = -1;
+        is_rcv_propagation_running = -1;
         break;
       }
     }
