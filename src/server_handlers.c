@@ -97,6 +97,7 @@ int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
   }
 
   delete_file(file_path);
+  propagate_delete(sockfd, user_id, delete_pkt._payload);
 
   packet ack = create_packet(OK, C_DELETE, 0, "ok", 2);
 
@@ -123,7 +124,57 @@ int server_handles_get_sync_dir(int sockfd) {
 int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                         const char filename[MAX_FILENAME_SIZE]) {
 
-  packet msg = create_packet(S_PROPAGATE, 0, 0, "ok", 2);
+  packet msg = create_packet(S_PROPAGATE, 0, 0, "upload", 6);
+
+  ConnectionInfo *info = malloc(sizeof(ConnectionInfo));
+
+  info = connection_map_search_other(user_id, sockfd);
+
+  if (info == NULL) {
+    fprintf(stderr, "No connection\n");
+    return -1;
+  }
+
+  // fprintf(stderr, "Propagate from: %d", sockfd);
+  // fprintf(stderr, "Popagate to: %d,%d\n", info->normal_sockfd,
+  //        info->propagation_sockfd);
+
+  fprintf(stderr, "Send propagation notification\n");
+  if (send_message(info->propagation_read_sockfd, msg) != 0) {
+    perror("Error sending propagate msg\n");
+    return -1;
+  }
+  fprintf(stderr, "Receiving ok\n");
+  // rcv Ack client command
+  if (rcv_message(info->propagation_write_sockfd, OK, S_PROPAGATE, &msg) != 0) {
+    perror("Error rcv_message ack propagate\n");
+    return -1;
+  }
+
+  fprintf(stderr, "Sending metadata\n");
+  char file_path[MAX_PAYLOAD_SIZE * 2];
+  snprintf(file_path, sizeof(file_path), "%s/%s", user_id, filename);
+
+  if (send_metadata(info->propagation_write_sockfd, file_path) != 0) {
+    fprintf(stderr, "error or equal checksum\n");
+    return -1;
+  }
+
+  fprintf(stderr, "Receiving ACK\n");
+  // Ack receive
+  if (rcv_message(info->propagation_write_sockfd, OK, S_PROPAGATE, &msg) != 0) {
+    perror("Error rcv_message ack propagate or checksum or no file\n");
+    return -1;
+  }
+
+  fprintf(stderr, "Teste 5\n");
+  return send_file(info->propagation_write_sockfd, file_path);
+}
+
+int propagate_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                     const char filename[MAX_FILENAME_SIZE]) {
+
+  packet msg = create_packet(S_PROPAGATE, 0, 0, "delete", 6);
 
   ConnectionInfo *info = malloc(sizeof(ConnectionInfo));
 
@@ -150,10 +201,11 @@ int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
   }
 
   fprintf(stderr, "Teste 2\n");
-  char file_path[MAX_PAYLOAD_SIZE * 2];
-  snprintf(file_path, sizeof(file_path), "%s/%s", user_id, filename);
-
-  if (send_metadata(info->propagation_write_sockfd, file_path) != 0) {
+  // char file_path[MAX_PAYLOAD_SIZE * 2];
+  // snprintf(file_path, sizeof(file_path), "%s/%s", user_id, filename);
+  packet to_delete =
+      create_packet(S_PROPAGATE, C_DELETE, 0, filename, strlen(filename));
+  if (send_message(info->propagation_write_sockfd, to_delete) != 0) {
     fprintf(stderr, "error or equal checksum\n");
     return -1;
   }
@@ -166,8 +218,9 @@ int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
   }
 
   fprintf(stderr, "Teste 5\n");
-  return send_file(info->propagation_write_sockfd, file_path);
+  return 0;
 }
+
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
                    int propagation_r_sockfd, int propagation_w_sockfd) {
 

@@ -9,7 +9,7 @@ int client_exit(int sockfd) {
   return 0;
 }
 
-int client_rcv_propagation(int sockfd) {
+int client_delete_propagation(int sockfd) {
 
   packet ack = create_packet(OK, S_PROPAGATE, 0, "ok", 2);
 
@@ -22,6 +22,34 @@ int client_rcv_propagation(int sockfd) {
 
   fprintf(stderr, "Teste B\n");
   // rcv metada
+
+  packet msg;
+  if (rcv_message(sockfd, S_PROPAGATE, C_DELETE, &msg) != 0) {
+    perror("Error rcv_message ack propagate\n");
+    return -1;
+  }
+
+  char file_path[MAX_PAYLOAD_SIZE * 2];
+  snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, msg._payload);
+
+  delete_file(file_path);
+
+  send_message(sockfd, ack);
+  return -1;
+}
+int client_rcv_propagation(int sockfd) {
+
+  packet ack = create_packet(OK, S_PROPAGATE, 0, "ok", 2);
+
+  fprintf(stderr, "SENDING FIRST ACK\n");
+  // Send ack
+  if (send_message(sockfd, ack) != 0) {
+    perror("Error sending ack msg\n");
+    return -1;
+  }
+
+  fprintf(stderr, "RCV METADATA\n");
+  // rcv metada
   //
   FileInfo server_file_metada = rcv_metadata(sockfd);
 
@@ -32,6 +60,7 @@ int client_rcv_propagation(int sockfd) {
     return -1;
   }
 
+  fprintf(stderr, "\n");
   char file_path[MAX_PAYLOAD_SIZE * 2];
   snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR,
            server_file_metada.filename);
@@ -42,20 +71,21 @@ int client_rcv_propagation(int sockfd) {
 
     unsigned char *local_file_checksum = fileMd5(file_path);
 
-    fprintf(stderr, "Teste C\n");
     if (strcmp((char *)local_file_checksum,
                (char *)server_file_metada.md5_checksum) == 0) {
+      fprintf(stderr, "Equal checksum\n");
       packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
       send_message(sockfd, ack_err);
       return -1;
     }
 
+    fprintf(stderr, "Diff checksum, sending ACK\n");
     send_message(sockfd, ack);
 
     uint32_t out_total_size;
     FileInfo fileinfo;
 
-    fprintf(stderr, "Teste D\n");
+    fprintf(stderr, "Saving file\n");
     char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
     char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
     save_file(fileinfo.filename, dir, file_data, out_total_size);
@@ -64,6 +94,7 @@ int client_rcv_propagation(int sockfd) {
     return 0;
   }
 
+  fprintf(stderr, "No file\n");
   packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
   send_message(sockfd, ack_err);
   return -1;
@@ -186,7 +217,7 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
 
   packet delete_msg = create_packet(C_DELETE, 0, 0, "delete", 6);
 
-  // printf("delete msg\n");
+  printf("delete msg\n");
   if (send_message(sockfd, delete_msg) != 0) {
     perror("Failed to send delete_msg\n");
     return -1;

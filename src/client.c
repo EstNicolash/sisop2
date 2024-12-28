@@ -1,6 +1,7 @@
 #include "../headers/client_threads.h"
 #include "../headers/file_manager.h"
 #include <arpa/inet.h> // For inet_pton, htons, sockaddr_in
+#include <libgen.h>
 #include <limits.h>
 #include <netinet/in.h> // For sockaddr_in
 #include <pthread.h>
@@ -10,7 +11,8 @@
 #include <string.h>     // For memset
 #include <sys/socket.h> // For socket, connect, AF_INET, SOCK_STREAM
 #include <unistd.h>     // For close
-
+                        //
+#include <libgen.h>
 #define BUFFER_SIZE 1024
 
 #define DOWNLOAD_STR "download"
@@ -128,12 +130,40 @@ int main(int argc, char *argv[]) {
       strncpy(filename_info, filename, MAX_PAYLOAD_SIZE);
 
       if (strcmp(command, DOWNLOAD_STR) == 0) {
+
         msg_queue_insert(C_DOWNLOAD, filename_info);
 
       } else if (strcmp(command, UPLOAD_STR) == 0) {
+
+        char file_path[MAX_PAYLOAD_SIZE * 2];
+
+        snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR,
+                 basename((char *)filename));
+
+        FILE *src_file = fopen(filename, "rb");
+        FILE *dest_file = fopen(file_path, "wb");
+        char buffer[BUFFER_SIZE];
+        size_t bytes;
+
+        if (!src_file || !dest_file) {
+          perror("File error");
+          return 1;
+        }
+
+        while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
+          fwrite(buffer, 1, bytes, dest_file);
+        }
+
+        fclose(src_file);
+        fclose(dest_file);
+
         msg_queue_insert(C_UPLOAD, filename_info);
 
       } else if (strcmp(command, DELETE_STR) == 0) {
+        fprintf(stderr, "DELETE CMD\n");
+        char file_path[MAX_PAYLOAD_SIZE * 2];
+        snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, filename);
+        delete_file(file_path);
         msg_queue_insert(C_DELETE, filename_info);
       }
     } else if (command) {

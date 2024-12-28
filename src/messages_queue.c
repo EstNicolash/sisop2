@@ -43,6 +43,36 @@ int msg_queue_insert(int type, char msg_info[MAX_PAYLOAD_SIZE]) {
     temp->next = new_node;
   }
 
+  fprintf(stderr, "message inserted: %d\n", type);
+  pthread_mutex_unlock(&queue_mutex);
+
+  return 0;
+}
+
+int msg_queue_insert_start(int type, char msg_info[MAX_PAYLOAD_SIZE]) {
+
+  if (is_valid_type(type) == -1) {
+    fprintf(stderr, "Invalid message type in queue insertion: %d\n", type);
+    return -1;
+  }
+
+  struct message_queue *new_node = create_node(type, msg_info);
+  if (!new_node) {
+    fprintf(stderr, "Error creating new node\n");
+    return -1;
+  }
+
+  pthread_mutex_lock(&queue_mutex);
+
+  if (!head) {
+    head = new_node;
+  } else {
+
+    new_node->next = head;
+    head = new_node;
+  }
+
+  fprintf(stderr, "message inserted: %d\n", type);
   pthread_mutex_unlock(&queue_mutex);
 
   return 0;

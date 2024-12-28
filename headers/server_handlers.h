@@ -16,6 +16,9 @@
 int propagate_to_client(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                         const char filename[MAX_FILENAME_SIZE]);
 
+int propagate_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                     const char filename[MAX_FILENAME_SIZE]);
+
 int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
 
 int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]);

@@ -5,16 +5,21 @@ int is_inotify_running = 0;
 int is_messages_running = 0;
 int is_rcv_propagation_running = 0;
 
+IgnoreList ignore_files[50];
+pthread_mutex_t ignore_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void *rcv_propagation_thread(void *arg) {
 
   int sockfd = *(int *)arg;
 
   packet pkt;
-  char msg[MAX_PAYLOAD_SIZE] = {""};
 
   while (is_rcv_propagation_running == 0) {
+    char msg[MAX_PAYLOAD_SIZE];
     rcv_message(sockfd, S_PROPAGATE, 0, &pkt);
-    msg_queue_insert(S_PROPAGATE, msg);
+    strncpy(msg, pkt._payload, MAX_PAYLOAD_SIZE);
+    fprintf(stderr, "msg: %s", msg);
+    msg_queue_insert_start(S_PROPAGATE, msg);
   }
 
   return NULL;
@@ -34,7 +39,9 @@ void *messages_thread(void *arg) {
     if (msg == NULL)
       continue;
 
+    fprintf(stderr, "msg_type: %d", msg->msg_type);
     switch (msg->msg_type) {
+
     case C_DOWNLOAD: {
 
       char cwd[MAX_FILENAME_SIZE];
@@ -65,9 +72,20 @@ void *messages_thread(void *arg) {
       break;
     }
 
-    case S_PROPAGATE:
-      client_rcv_propagation(prop_sockfd);
+    case S_PROPAGATE: {
+
+      fprintf(stderr, "info: %s\n", msg->msg_info);
+      if (strcmp("upload", msg->msg_info) == 0) {
+
+        fprintf(stderr, "up\n");
+        client_rcv_propagation(prop_sockfd);
+      } else if (strcmp("delete", msg->msg_info) == 0) {
+
+        fprintf(stderr, "del\n");
+        client_delete_propagation(prop_sockfd);
+      }
       break;
+    }
 
     default:
       fprintf(stderr, "Sus type in queue: %d\n", msg->msg_type);
@@ -115,26 +133,32 @@ void monitor_sync_dir(int sockfd) {
 
       if (is_inotify_running != 0)
         break;
+      if (event->mask & IN_MODIFY || event->mask & IN_CREATE) {
+        if (!is_ignored(file_path)) {
+          msg_queue_insert(C_UPLOAD, file_path);
+          add_to_ignore_list(file_path); // Prevent re-trigger
+        }
+      }
 
+      /*
       if (event->mask & IN_CREATE) {
 
         msg_queue_insert(C_UPLOAD, file_path);
-        /*
+
         pthread_mutex_lock(&client_sync_mutex);
         // printf("File created: %s\n", event->name);
         client_upload_file(sockfd, file_path);
-        pthread_mutex_unlock(&client_sync_mutex);*/
+        pthread_mutex_unlock(&client_sync_mutex)
       }
 
       if (event->mask & IN_MODIFY) {
 
         msg_queue_insert(C_UPLOAD, file_path);
-        /*
         pthread_mutex_lock(&client_sync_mutex);
         // printf("File modified: %s\n", event->name);
         client_upload_file(sockfd, file_path);
-        pthread_mutex_unlock(&client_sync_mutex);*/
-      }
+        pthread_mutex_unlock(&client_sync_mutex);
+      }*/
 
       if (event->mask & IN_DELETE) {
 
@@ -185,4 +209,39 @@ void *sync_dir_thread(void *arg) {
   }
   printf("Sync thread exiting...\n");
   return NULL;
+}
+
+// Add file to ignore list
+void add_to_ignore_list(const char *file) {
+  pthread_mutex_lock(&ignore_mutex);
+  time_t now = time(NULL);
+
+  for (int i = 0; i < 50; i++) {
+    if (ignore_files[i].file[0] == '\0') {
+      strncpy(ignore_files[i].file, file, sizeof(ignore_files[i].file));
+      ignore_files[i].timestamp = now;
+      break;
+    }
+  }
+  pthread_mutex_unlock(&ignore_mutex);
+}
+
+// Check if file is in ignore list
+int is_ignored(const char *file) {
+  pthread_mutex_lock(&ignore_mutex);
+  time_t now = time(NULL);
+
+  for (int i = 0; i < 50; i++) {
+    if (strcmp(ignore_files[i].file, file) == 0) {
+      if ((now - ignore_files[i].timestamp) < IGNORE_TIME) {
+        pthread_mutex_unlock(&ignore_mutex);
+        return 1; // File is still ignored
+      } else {
+        // Remove file from ignore list if time expired
+        ignore_files[i].file[0] = '\0';
+      }
+    }
+  }
+  pthread_mutex_unlock(&ignore_mutex);
+  return 0;
 }
