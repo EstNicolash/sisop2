@@ -164,6 +164,30 @@ void print_file_list(FileInfo *files, int num_files) {
          "-----\n");
 }
 
+int copy_file(const char *src_path, const char *dest_path) {
+  FILE *src_file = fopen(src_path, "rb");
+  FILE *dest_file = fopen(dest_path, "wb");
+  if (!src_file || !dest_file) {
+    perror("File error");
+    if (src_file)
+      fclose(src_file);
+    if (dest_file)
+      fclose(dest_file);
+    return -1;
+  }
+
+  static const int BUFFER_LEN = 1024;
+  char buffer[BUFFER_LEN];
+  size_t bytes;
+  while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
+    fwrite(buffer, 1, bytes, dest_file);
+  }
+
+  fclose(src_file);
+  fclose(dest_file);
+  return 0;
+}
+
 unsigned char *fileMd5(const char *filename) {
   EVP_MD_CTX *mdctx;
   unsigned char md5_digest[16];

@@ -38,7 +38,7 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count);
 void print_file_list(FileInfo *files, int num_files);
 
 int file_exists(const char filename[MAX_FILENAME_SIZE]);
-
+int copy_file(const char *src_path, const char *dest_path);
 unsigned char *fileMd5(const char *filename);
 
 #endif

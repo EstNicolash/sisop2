@@ -123,70 +123,55 @@ int main(int argc, char *argv[]) {
 
     char *command = strtok(buffer, " ");
     char *filename = strtok(NULL, " ");
+    char msg[MAX_PAYLOAD_SIZE] = {""};
 
-    // pthread_mutex_lock(&client_sync_mutex);
-    if (command && filename) {
-      char filename_info[MAX_PAYLOAD_SIZE];
-      strncpy(filename_info, filename, MAX_PAYLOAD_SIZE);
-
-      if (strcmp(command, DOWNLOAD_STR) == 0) {
-
-        msg_queue_insert(C_DOWNLOAD, filename_info);
-
-      } else if (strcmp(command, UPLOAD_STR) == 0) {
-
-        char file_path[MAX_PAYLOAD_SIZE * 2];
-
-        snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR,
-                 basename((char *)filename));
-
-        FILE *src_file = fopen(filename, "rb");
-        FILE *dest_file = fopen(file_path, "wb");
-        char buffer[BUFFER_SIZE];
-        size_t bytes;
-
-        if (!src_file || !dest_file) {
-          perror("File error");
-          return 1;
-        }
-
-        while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
-          fwrite(buffer, 1, bytes, dest_file);
-        }
-
-        fclose(src_file);
-        fclose(dest_file);
-
-        msg_queue_insert(C_UPLOAD, filename_info);
-
-      } else if (strcmp(command, DELETE_STR) == 0) {
-        fprintf(stderr, "DELETE CMD\n");
-        char file_path[MAX_PAYLOAD_SIZE * 2];
-        snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, filename);
-        delete_file(file_path);
-        msg_queue_insert(C_DELETE, filename_info);
-      }
-    } else if (command) {
-
-      char msg[MAX_PAYLOAD_SIZE] = {""};
-
-      if (strcmp(command, LIST_CLIENT_STR) == 0) {
-        client_list_client();
-      } else if (strcmp(command, LIST_SERVER_STR) == 0) {
-        msg_queue_insert(C_LIST_SERVER, msg);
-      } else if (strcmp(command, GET_SYNC_DIR_STR) == 0) {
-        msg_queue_insert(C_GET_SYNC_DIR, msg);
-
-      } else if (strcmp(command, EXIT_STR) == 0) {
-        client_exit(sockfd);
-        is_sync_running = -1;
-        is_inotify_running = -1;
-        is_messages_running = -1;
-        is_rcv_propagation_running = -1;
-        break;
-      }
+    if (strcmp(command, EXIT_STR) == 0) {
+      client_exit(sockfd);
+      is_sync_running = -1;
+      is_inotify_running = -1;
+      is_messages_running = -1;
+      is_rcv_propagation_running = -1;
+      break;
     }
-    // pthread_mutex_unlock(&client_sync_mutex);
+
+    if (strcmp(command, LIST_CLIENT_STR) == 0) {
+      client_list_client();
+      continue;
+    }
+    if (strcmp(command, LIST_SERVER_STR) == 0) {
+      msg_queue_insert(C_LIST_SERVER, msg);
+      continue;
+    }
+    if (strcmp(command, GET_SYNC_DIR_STR) == 0) {
+      msg_queue_insert(C_GET_SYNC_DIR, msg);
+      continue;
+    }
+
+    if (!filename)
+      continue;
+
+    char filename_info[MAX_PAYLOAD_SIZE];
+    strncpy(filename_info, filename, MAX_PAYLOAD_SIZE);
+
+    if (strcmp(command, DOWNLOAD_STR) == 0) {
+      msg_queue_insert(C_DOWNLOAD, filename_info);
+      continue;
+    }
+
+    if (strcmp(command, UPLOAD_STR) == 0) {
+      copy_file(filename, SYNC_DIR);
+      msg_queue_insert(C_UPLOAD, filename_info);
+      continue;
+    }
+
+    if (strcmp(command, DELETE_STR) == 0) {
+      fprintf(stderr, "DELETE CMD\n");
+      char file_path[MAX_PAYLOAD_SIZE * 2];
+      snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, filename);
+      delete_file(file_path);
+      msg_queue_insert(C_DELETE, filename_info);
+      continue;
+    }
   }
 
   fprintf(stderr, "1...\n");
@@ -210,7 +195,7 @@ int main(int argc, char *argv[]) {
   }
 
   fprintf(stderr, "5...\n");
-  // pthread_mutex_destroy(&client_sync_mutex);
+
   close(sockfd);
   close(prop_write_sockfd);
   close(prop_read_sockfd);
