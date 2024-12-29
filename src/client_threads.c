@@ -1,4 +1,5 @@
 #include "../headers/client_threads.h"
+#include <sys/inotify.h>
 
 int is_sync_running = 0;
 int is_inotify_running = 0;
@@ -133,52 +134,27 @@ void monitor_sync_dir(int sockfd) {
 
       if (is_inotify_running != 0)
         break;
+
+      if (event->name[0] == '.')
+        break;
+
       if (event->mask & IN_MODIFY || event->mask & IN_CREATE) {
+
+        fprintf(stderr, "MODIFY or CREATE: %s", event->name);
         if (!is_ignored(file_path)) {
           msg_queue_insert(C_UPLOAD, file_path);
           add_to_ignore_list(file_path); // Prevent re-trigger
         }
       }
 
-      /*
-      if (event->mask & IN_CREATE) {
+      if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM) {
 
-        msg_queue_insert(C_UPLOAD, file_path);
-
-        pthread_mutex_lock(&client_sync_mutex);
-        // printf("File created: %s\n", event->name);
-        client_upload_file(sockfd, file_path);
-        pthread_mutex_unlock(&client_sync_mutex)
-      }
-
-      if (event->mask & IN_MODIFY) {
-
-        msg_queue_insert(C_UPLOAD, file_path);
-        pthread_mutex_lock(&client_sync_mutex);
-        // printf("File modified: %s\n", event->name);
-        client_upload_file(sockfd, file_path);
-        pthread_mutex_unlock(&client_sync_mutex);
-      }*/
-
-      if (event->mask & IN_DELETE) {
-
+        char file_path[MAX_PAYLOAD_SIZE * 2];
+        snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, event->name);
+        delete_file(file_path);
         msg_queue_insert(C_DELETE, event->name);
-        /*
-        pthread_mutex_lock(&client_sync_mutex);
-        // printf("Deleting file: %s\n", event->name);
-        client_delete_file(sockfd, event->name);
-        pthread_mutex_unlock(&client_sync_mutex);*/
       }
 
-      if (event->mask & IN_MOVED_FROM) {
-
-        msg_queue_insert(C_DELETE, event->name);
-        /*
-        pthread_mutex_lock(&client_sync_mutex);
-        // printf("Deleting file: %s\n", event->name);
-        client_delete_file(sockfd, event->name);
-        pthread_mutex_unlock(&client_sync_mutex);*/
-      }
       p += sizeof(struct inotify_event) + event->len;
     }
   }
@@ -209,39 +185,4 @@ void *sync_dir_thread(void *arg) {
   }
   printf("Sync thread exiting...\n");
   return NULL;
-}
-
-// Add file to ignore list
-void add_to_ignore_list(const char *file) {
-  pthread_mutex_lock(&ignore_mutex);
-  time_t now = time(NULL);
-
-  for (int i = 0; i < 50; i++) {
-    if (ignore_files[i].file[0] == '\0') {
-      strncpy(ignore_files[i].file, file, sizeof(ignore_files[i].file));
-      ignore_files[i].timestamp = now;
-      break;
-    }
-  }
-  pthread_mutex_unlock(&ignore_mutex);
-}
-
-// Check if file is in ignore list
-int is_ignored(const char *file) {
-  pthread_mutex_lock(&ignore_mutex);
-  time_t now = time(NULL);
-
-  for (int i = 0; i < 50; i++) {
-    if (strcmp(ignore_files[i].file, file) == 0) {
-      if ((now - ignore_files[i].timestamp) < IGNORE_TIME) {
-        pthread_mutex_unlock(&ignore_mutex);
-        return 1; // File is still ignored
-      } else {
-        // Remove file from ignore list if time expired
-        ignore_files[i].file[0] = '\0';
-      }
-    }
-  }
-  pthread_mutex_unlock(&ignore_mutex);
-  return 0;
 }

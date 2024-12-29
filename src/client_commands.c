@@ -78,26 +78,26 @@ int client_rcv_propagation(int sockfd) {
       send_message(sockfd, ack_err);
       return -1;
     }
-
-    fprintf(stderr, "Diff checksum, sending ACK\n");
-    send_message(sockfd, ack);
-
-    uint32_t out_total_size;
-    FileInfo fileinfo;
-
-    fprintf(stderr, "Saving file\n");
-    char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
-    char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
-    save_file(fileinfo.filename, dir, file_data, out_total_size);
-    free(file_data);
-
-    return 0;
   }
 
-  fprintf(stderr, "No file\n");
-  packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
-  send_message(sockfd, ack_err);
-  return -1;
+  fprintf(stderr, "Diff checksum, sending ACK\n");
+  send_message(sockfd, ack);
+
+  uint32_t out_total_size;
+  FileInfo fileinfo;
+
+  add_to_ignore_list(server_file_metada.filename);
+
+  fprintf(stderr, "Saving file\n");
+  char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
+  char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
+  save_file(fileinfo.filename, dir, file_data, out_total_size);
+  free(file_data);
+
+  // fprintf(stderr, "No file\n");
+  // packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
+  // send_message(sockfd, ack_err);
+  return 0;
 }
 int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]) {
 
@@ -339,5 +339,40 @@ int get_sync_dir(int sockfd) {
   free(to_delete_files);
   free(to_download_files);
 
+  return 0;
+}
+
+// Add file to ignore list
+void add_to_ignore_list(const char *file) {
+  pthread_mutex_lock(&ignore_mutex);
+  time_t now = time(NULL);
+
+  for (int i = 0; i < 50; i++) {
+    if (ignore_files[i].file[0] == '\0') {
+      strncpy(ignore_files[i].file, file, sizeof(ignore_files[i].file));
+      ignore_files[i].timestamp = now;
+      break;
+    }
+  }
+  pthread_mutex_unlock(&ignore_mutex);
+}
+
+// Check if file is in ignore list
+int is_ignored(const char *file) {
+  pthread_mutex_lock(&ignore_mutex);
+  time_t now = time(NULL);
+
+  for (int i = 0; i < 50; i++) {
+    if (strcmp(ignore_files[i].file, file) == 0) {
+      if ((now - ignore_files[i].timestamp) < IGNORE_TIME) {
+        pthread_mutex_unlock(&ignore_mutex);
+        return 1; // File is still ignored
+      } else {
+        // Remove file from ignore list if time expired
+        ignore_files[i].file[0] = '\0';
+      }
+    }
+  }
+  pthread_mutex_unlock(&ignore_mutex);
   return 0;
 }
