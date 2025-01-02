@@ -26,6 +26,7 @@
 #define C_GET_SYNC_DIR 29
 
 #define S_PROPAGATE 30
+#define S_ELECTION 31
 
 #define ANYTHING 100
 // Estrutura para troca de mensagens de arquivo
