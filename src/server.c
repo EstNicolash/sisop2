@@ -18,13 +18,13 @@ int main() {
   read_server_config();
   set_servers();
   setup_election_socket(ELECTION_PORT);
+  start_election();
   pthread_t election_manager_thread;
   if (pthread_create(&election_manager_thread, NULL, election_manager, NULL) !=
       0) {
     perror("Thread creation failed\n");
     exit(EXIT_FAILURE);
   }
-  start_election();
   pthread_mutex_lock(&election_mutex);
   while (server_id != elected_server) {
     pthread_cond_wait(&election_cond, &election_mutex);
