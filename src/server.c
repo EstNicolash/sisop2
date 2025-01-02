@@ -15,6 +15,7 @@ pthread_cond_t election_cond = PTHREAD_COND_INITIALIZER;
 int main() {
 
   // ELECTION
+  read_server_config();
   setup_election_socket(ELECTION_PORT);
   pthread_t election_manager_thread;
   if (pthread_create(&election_manager_thread, NULL, election_manager, NULL) !=
