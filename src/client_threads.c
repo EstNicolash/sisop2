@@ -10,15 +10,18 @@ IgnoreEntry ignore_files[MAX_IGNORE_FILES];
 TimedIgnoreEntry timed_ignore_files[MAX_IGNORE_FILES];
 pthread_mutex_t ignore_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void *rcv_propagation_thread(void *arg) {
+int sockfd, prop_read_sockfd, prop_write_sockfd;
+int port = -1;
+char server_ip[256] = {""};
+char next_server_ip[256] = {""};
 
-  int sockfd = *(int *)arg;
+void *rcv_propagation_thread(void *arg) {
 
   packet pkt;
 
   while (is_rcv_propagation_running == 0) {
     char msg[MAX_PAYLOAD_SIZE];
-    rcv_message(sockfd, S_PROPAGATE, 0, &pkt);
+    rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt);
     strncpy(msg, pkt._payload, MAX_PAYLOAD_SIZE);
     fprintf(stderr, "msg: %s", msg);
     msg_queue_insert_start(S_PROPAGATE, msg);
@@ -28,11 +31,6 @@ void *rcv_propagation_thread(void *arg) {
 }
 
 void *messages_thread(void *arg) {
-
-  int *sockets = (int *)arg;
-  int sockfd = sockets[0];
-  int prop_sockfd = sockets[1];
-  free(arg);
 
   while (is_messages_running == 0) {
 
@@ -80,11 +78,11 @@ void *messages_thread(void *arg) {
       if (strcmp("upload", msg->msg_info) == 0) {
 
         fprintf(stderr, "up\n");
-        client_rcv_propagation(prop_sockfd);
+        client_rcv_propagation(prop_write_sockfd);
       } else if (strcmp("delete", msg->msg_info) == 0) {
 
         fprintf(stderr, "del\n");
-        client_delete_propagation(prop_sockfd);
+        client_delete_propagation(prop_write_sockfd);
       }
       break;
     }
@@ -99,7 +97,7 @@ void *messages_thread(void *arg) {
 
   return NULL;
 }
-void monitor_sync_dir(int sockfd) {
+void monitor_sync_dir() {
 
   int inotifyFd = inotify_init();
   if (inotifyFd == -1) {
@@ -165,14 +163,12 @@ void monitor_sync_dir(int sockfd) {
   close(inotifyFd);
 }
 void *inotify_thread(void *arg) {
-  int sockfd = *(int *)arg;
-  monitor_sync_dir(sockfd);
+  monitor_sync_dir();
   return NULL;
 }
 
 // Thread function to periodically sync directories
 void *sync_dir_thread(void *arg) {
-  // int sockfd = *(int *)arg;
 
   char msg[MAX_PAYLOAD_SIZE] = {""};
   while (is_sync_running == 0) {
@@ -189,4 +185,33 @@ void *sync_dir_thread(void *arg) {
   }
   printf("Sync thread exiting...\n");
   return NULL;
+}
+
+int client_connect(const char *server_ip, int port) {
+  int sockfd;
+  struct sockaddr_in serv_addr;
+
+  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    perror("ERROR opening socket");
+    return -1;
+  }
+
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(port);
+
+  if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
+    perror("Invalid IP address or address not supported");
+    close(sockfd);
+    return -1;
+  }
+
+  printf("Attempting connection\n");
+  if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    perror("ERROR connecting");
+    close(sockfd);
+    return -1;
+  }
+
+  printf("Connected\n");
+  return sockfd;
 }

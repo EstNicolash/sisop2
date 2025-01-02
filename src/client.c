@@ -27,23 +27,21 @@
 int client_connect(const char *server_ip, int port);
 
 int main(int argc, char *argv[]) {
-  int sockfd, prop_read_sockfd, prop_write_sockfd;
   char buffer[BUFFER_SIZE];
   char client_id[BUFFER_SIZE];
-  char server_ip[BUFFER_SIZE];
   char server_port[BUFFER_SIZE];
 
   printf("Client start\n");
 
   strncpy(client_id, argv[1], BUFFER_SIZE);
-  strncpy(server_ip, argv[2], BUFFER_SIZE);
+  strncpy(server_ip, argv[2], 256);
   strncpy(server_port, argv[3], BUFFER_SIZE);
 
   printf("Client ID: %s\n", client_id);
   printf("Server IP: %s\n", server_ip);
   printf("Server Port: %s\n", server_port);
 
-  int port = atoi(server_port);
+  port = atoi(server_port);
   if (port <= 0) {
     fprintf(stderr, "Invalid port, using default port %d\n", port);
     exit(0);
@@ -75,14 +73,14 @@ int main(int argc, char *argv[]) {
   create_directory(dir);
 
   pthread_t monitor_thread;
-  if (pthread_create(&monitor_thread, NULL, inotify_thread, &sockfd) != 0) {
+  if (pthread_create(&monitor_thread, NULL, inotify_thread, NULL) != 0) {
     perror("Failed to create thread");
     close(sockfd);
     return EXIT_FAILURE;
   }
 
   pthread_t sync_thread;
-  if (pthread_create(&sync_thread, NULL, sync_dir_thread, &sockfd) != 0) {
+  if (pthread_create(&sync_thread, NULL, sync_dir_thread, NULL) != 0) {
     perror("Failed to create sync thread");
     close(sockfd);
     // pthread_mutex_destroy(&client_sync_mutex);
@@ -95,10 +93,8 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  sockets[0] = sockfd;
-  sockets[1] = prop_write_sockfd;
   pthread_t msg_thread;
-  if (pthread_create(&msg_thread, NULL, messages_thread, sockets) != 0) {
+  if (pthread_create(&msg_thread, NULL, messages_thread, NULL) != 0) {
     perror("Failed to create sync thread");
     close(sockfd);
     // pthread_mutex_destroy(&client_sync_mutex);
@@ -106,8 +102,7 @@ int main(int argc, char *argv[]) {
   }
 
   pthread_t prop_thread;
-  if (pthread_create(&prop_thread, NULL, rcv_propagation_thread,
-                     &prop_read_sockfd) != 0) {
+  if (pthread_create(&prop_thread, NULL, rcv_propagation_thread, NULL) != 0) {
     perror("Failed to create sync thread");
     close(sockfd);
     // pthread_mutex_destroy(&client_sync_mutex);
@@ -201,33 +196,4 @@ int main(int argc, char *argv[]) {
   close(prop_read_sockfd);
   printf("Client stop\n");
   return 0;
-}
-
-int client_connect(const char *server_ip, int port) {
-  int sockfd;
-  struct sockaddr_in serv_addr;
-
-  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    perror("ERROR opening socket");
-    return -1;
-  }
-
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(port);
-
-  if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
-    perror("Invalid IP address or address not supported");
-    close(sockfd);
-    return -1;
-  }
-
-  printf("Attempting connection\n");
-  if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    perror("ERROR connecting");
-    close(sockfd);
-    return -1;
-  }
-
-  printf("Connected\n");
-  return sockfd;
 }
