@@ -59,6 +59,8 @@ void set_servers() {
   char local_ip[256];
   get_local_ip(local_ip);
 
+  fprintf(stderr, "Local IP:%s\n", local_ip);
+
   for (int i = 0; i < total_servers; i++) {
     alive_servers[i] = 0;
     if (strcmp(local_ip, server_ips[i]) == 0) {

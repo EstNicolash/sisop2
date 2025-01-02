@@ -109,10 +109,13 @@ int server_setup(int port) {
 }
 
 void *election_manager(void *arg) {
-  handle_election();
-  pthread_mutex_lock(&election_mutex);
-  pthread_cond_signal(&election_cond);
-  pthread_mutex_unlock(&election_mutex);
+  while (1) {
+
+    handle_election();
+    pthread_mutex_lock(&election_mutex);
+    pthread_cond_signal(&election_cond);
+    pthread_mutex_unlock(&election_mutex);
+  }
   return NULL;
 }
 
