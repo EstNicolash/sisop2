@@ -8,9 +8,6 @@ int server_accept_client(int sockfd);
 void *client_handler(void *arg);
 void *election_manager(void *arg);
 
-pthread_mutex_t election_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t election_cond = PTHREAD_COND_INITIALIZER;
-
 #define PORT 48487
 int main() {
 
@@ -25,6 +22,20 @@ int main() {
     perror("Thread creation failed\n");
     exit(EXIT_FAILURE);
   }
+
+  pthread_t listen_hearbeat_thread;
+  if (pthread_create(&listen_hearbeat_thread, NULL, listen_for_heartbeat,
+                     NULL) != 0) {
+    perror("Thread creation failed\n");
+    exit(EXIT_FAILURE);
+  }
+
+  pthread_t send_heartbeat_thread;
+  if (pthread_create(&send_heartbeat_thread, NULL, send_heartbeat, NULL) != 0) {
+    perror("Thread creation failed\n");
+    exit(EXIT_FAILURE);
+  }
+
   pthread_mutex_lock(&election_mutex);
   while (server_id != elected_server) {
     pthread_cond_wait(&election_cond, &election_mutex);
