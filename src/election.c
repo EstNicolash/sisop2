@@ -124,6 +124,7 @@ void setup_election_socket(int port) {
 void send_election_message(struct election_msg msg) {
   struct sockaddr_in addr;
 
+  fprintf(stderr, "send message function\n");
   addr.sin_family = AF_INET;
   addr.sin_port = htons(ELECTION_PORT);
   inet_pton(AF_INET, server_ips[next_server], &addr.sin_addr);
@@ -163,6 +164,7 @@ struct election_msg receive_election_message() {
   struct election_msg msg;
   int new_sock;
 
+  fprintf(stderr, "rcv election message\n");
   new_sock = accept(read_listen_sockfd, (struct sockaddr *)&addr, &addr_len);
   if (new_sock < 0) {
     perror("Accept failed");
@@ -184,21 +186,30 @@ struct election_msg receive_election_message() {
 }
 
 void start_election() {
+  fprintf(stderr, "start election\n");
   struct election_msg msg;
   msg.id = server_id;
   msg.elected = -1;
   is_participating = 0;
   send_election_message(msg);
+  fprintf(stderr, "start election sended\n");
 }
 
 void *handle_election() {
   struct election_msg msg = receive_election_message();
 
+  fprintf(stderr, "handle election\n");
+
+  if (msg.elected == 0 && server_id == msg.id) {
+    fprintf(stderr, "Server %d elected\n", msg.id);
+    return NULL;
+  }
   if (server_id == msg.id && msg.elected == -1) {
     fprintf(stderr, "Server %d elected\n", msg.id);
     msg.elected = 0;
     msg.id = server_id;
     elected_server = server_id;
+    is_participating = -1;
     send_election_message(msg);
     return NULL;
   }

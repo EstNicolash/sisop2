@@ -24,7 +24,7 @@ int main() {
     perror("Thread creation failed\n");
     exit(EXIT_FAILURE);
   }
-
+  start_election();
   pthread_mutex_lock(&election_mutex);
   while (server_id != elected_server) {
     pthread_cond_wait(&election_cond, &election_mutex);
@@ -110,7 +110,6 @@ int server_setup(int port) {
 
 void *election_manager(void *arg) {
   while (1) {
-
     handle_election();
     pthread_mutex_lock(&election_mutex);
     pthread_cond_signal(&election_cond);
