@@ -31,6 +31,7 @@ struct election_msg receive_election_message();
 void *handle_election();
 //
 void get_local_ip(char *buffer);
+void set_servers();
 //
 void start_heartbeat();
 void listen_for_heartbeat();
