@@ -1,5 +1,6 @@
 #include "../headers/server_handlers.h"
 #include "../headers/connection_map.h"
+#include "../headers/election.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,7 +14,8 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
 
   strncpy(user_id, rcv_pkt._payload, MAX_FILENAME_SIZE);
 
-  packet pkt = create_packet(OK, 0, 0, "ok", 2);
+  packet pkt = create_packet(OK, 0, 0, server_ips[next_server],
+                             strnlen(server_ips[next_server], 256));
   send_message(sockfd, pkt);
   return 1;
 }

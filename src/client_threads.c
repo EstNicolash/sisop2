@@ -10,18 +10,16 @@ IgnoreEntry ignore_files[MAX_IGNORE_FILES];
 TimedIgnoreEntry timed_ignore_files[MAX_IGNORE_FILES];
 pthread_mutex_t ignore_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int sockfd, prop_read_sockfd, prop_write_sockfd;
-int port = -1;
-char server_ip[256] = {""};
-char next_server_ip[256] = {""};
-
 void *rcv_propagation_thread(void *arg) {
 
   packet pkt;
 
   while (is_rcv_propagation_running == 0) {
     char msg[MAX_PAYLOAD_SIZE];
-    rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt);
+
+    if (rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt) == -1)
+      continue;
+
     strncpy(msg, pkt._payload, MAX_PAYLOAD_SIZE);
     fprintf(stderr, "msg: %s", msg);
     msg_queue_insert_start(S_PROPAGATE, msg);
@@ -187,11 +185,52 @@ void *sync_dir_thread(void *arg) {
   return NULL;
 }
 
+void *heartbeat_thread(void *arg) {
+
+  while (1) {
+    int temp_sockfd;
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(HEARTBEAT_PORT);
+
+    inet_pton(AF_INET, server_ip, &addr.sin_addr);
+
+    temp_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (temp_sockfd < 0) {
+      perror("Socket creation failed");
+      sleep(1);
+      continue;
+    }
+
+    sleep(HEARTBEAT_INTERVAL);
+
+    fprintf(stderr, "Sending heartbet\n");
+    if (connect(temp_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+
+      sleep(HEARTBEAT_INTERVAL);
+
+      sockfd = client_connect(next_server_ip, port);
+      sleep(1);
+      prop_read_sockfd = client_connect(next_server_ip, port + 1);
+      sleep(1);
+      prop_write_sockfd = client_connect(next_server_ip, port + 2);
+
+      strcpy(server_ip, next_server_ip);
+
+      client_send_id(sockfd, client_id);
+    }
+
+    continue;
+
+    close(temp_sockfd); // Close socket after successful heartbeat
+  }
+}
+
 int client_connect(const char *server_ip, int port) {
-  int sockfd;
+  int tem_sockfd;
   struct sockaddr_in serv_addr;
 
-  if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+  if ((tem_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     perror("ERROR opening socket");
     return -1;
   }
@@ -201,12 +240,13 @@ int client_connect(const char *server_ip, int port) {
 
   if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
     perror("Invalid IP address or address not supported");
-    close(sockfd);
+    close(tem_sockfd);
     return -1;
   }
 
   printf("Attempting connection\n");
-  if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+  if (connect(tem_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
+      0) {
     perror("ERROR connecting");
     close(sockfd);
     return -1;

@@ -3,6 +3,13 @@
 #include <openssl/evp.h>
 #include <stdint.h>
 #include <string.h>
+
+int sockfd, prop_read_sockfd, prop_write_sockfd;
+int port = -1;
+char server_ip[256] = {""};
+char next_server_ip[256] = {""};
+char client_id[1024];
+
 int client_exit(int sockfd) {
   packet pkt = create_packet(C_EXIT, 0, 0, "exit", 4);
   send_message(sockfd, pkt);
@@ -110,6 +117,8 @@ int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]) {
 
   if (rcv_message(sockfd, OK, 0, &pkt) != 0)
     return -1;
+
+  strncpy(next_server_ip, pkt._payload, 256);
 
   return 0;
 }
@@ -429,3 +438,5 @@ int is_ignored(const char *file) {
   pthread_mutex_unlock(&ignore_mutex);
   return ignored;
 }
+
+int client_init_msg() { return 0; }

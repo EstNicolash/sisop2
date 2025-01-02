@@ -17,7 +17,7 @@ extern int elected_server;
 extern int next_server;
 extern int is_participating;
 extern int server_id;
-extern char sever_ips[MAX_SERVERS][MAX_LINE_LENGTH];
+extern char server_ips[MAX_SERVERS][MAX_LINE_LENGTH];
 extern int alive_servers[MAX_SERVERS];
 extern int total_servers;
 

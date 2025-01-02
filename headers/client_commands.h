@@ -15,12 +15,17 @@ typedef struct {
   char file[256];
 } IgnoreEntry;
 
+extern int sockfd, prop_read_sockfd, prop_write_sockfd;
+extern int port;
+extern char server_ip[256];
+extern char next_server_ip[256];
 extern IgnoreEntry ignore_files[MAX_IGNORE_FILES];
 extern TimedIgnoreEntry timed_ignore_files[MAX_IGNORE_FILES];
 extern pthread_mutex_t ignore_mutex;
+extern char client_id[1024];
 
 #define SYNC_DIR "sync_dir"
-
+int client_init_msg();
 int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]);
 int client_upload_file(int sockfd, char filename[MAX_FILENAME_SIZE]);
 int client_download_file(int sockfd, char filename[MAX_FILENAME_SIZE],

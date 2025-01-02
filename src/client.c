@@ -28,7 +28,6 @@ int client_connect(const char *server_ip, int port);
 
 int main(int argc, char *argv[]) {
   char buffer[BUFFER_SIZE];
-  char client_id[BUFFER_SIZE];
   char server_port[BUFFER_SIZE];
 
   printf("Client start\n");
@@ -72,6 +71,13 @@ int main(int argc, char *argv[]) {
   const char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
   create_directory(dir);
 
+  pthread_t hrtbt_thread;
+  if (pthread_create(&hrtbt_thread, NULL, heartbeat_thread, NULL) != 0) {
+    perror("Failed to create thread");
+    close(sockfd);
+    return EXIT_FAILURE;
+  }
+
   pthread_t monitor_thread;
   if (pthread_create(&monitor_thread, NULL, inotify_thread, NULL) != 0) {
     perror("Failed to create thread");
@@ -85,12 +91,6 @@ int main(int argc, char *argv[]) {
     close(sockfd);
     // pthread_mutex_destroy(&client_sync_mutex);
     return EXIT_FAILURE;
-  }
-
-  int *sockets = malloc(2 * sizeof(int));
-  if (sockets == NULL) {
-    perror("malloc failed");
-    return -1;
   }
 
   pthread_t msg_thread;
@@ -169,8 +169,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  fprintf(stderr, "1...\n");
+  fprintf(stderr, "0...\n");
   if (pthread_join(sync_thread, NULL) != 0) {
+    perror("Failed to join sync thread");
+  }
+
+  fprintf(stderr, "1...\n");
+  if (pthread_join(hrtbt_thread, NULL) != 0) {
     perror("Failed to join sync thread");
   }
 
