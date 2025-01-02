@@ -69,6 +69,8 @@ void set_servers() {
   next_server = (server_id + 1) % total_servers;
 
   fprintf(stderr, "servers setted\n");
+  fprintf(stderr, "server_id:%d\n", server_id);
+  fprintf(stderr, "next_server:%d\n", next_server);
 }
 
 void setup_election_socket(int port) {
