@@ -21,6 +21,8 @@ int read_listen_sockfd;
 int heartbeat_sockfd;
 int elected_server;
 
+pthread_mutex_t election_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t election_cond = PTHREAD_COND_INITIALIZER;
 void get_local_ip(char *buffer) {
   struct ifaddrs *ifaddr, *ifa;
   int family;
@@ -68,6 +70,8 @@ void read_server_config() {
 }
 
 void set_servers() {
+
+  pthread_mutex_lock(&election_mutex);
   is_participating = -1;
   elected_server = -1;
 
@@ -85,6 +89,7 @@ void set_servers() {
 
   next_server = (server_id + 1) % total_servers;
 
+  pthread_mutex_unlock(&election_mutex);
   fprintf(stderr, "servers setted\n");
   fprintf(stderr, "server_id:%d\n", server_id);
   fprintf(stderr, "next_server:%d\n", next_server);
@@ -188,10 +193,13 @@ struct election_msg receive_election_message() {
 void start_election() {
   fprintf(stderr, "start election\n");
   struct election_msg msg;
+
+  pthread_mutex_lock(&election_mutex);
   msg.id = server_id;
   msg.elected = -1;
   is_participating = 0;
   send_election_message(msg);
+  pthread_mutex_unlock(&election_mutex);
   fprintf(stderr, "start election sended\n");
 }
 
@@ -200,8 +208,11 @@ void *handle_election() {
 
   fprintf(stderr, "handle election\n");
 
+  pthread_mutex_lock(&election_mutex);
   if (msg.elected == 0 && server_id == msg.id) {
     fprintf(stderr, "Loop 2: Server %d elected\n", msg.id);
+
+    pthread_mutex_unlock(&election_mutex);
     return NULL;
   }
   if (server_id == msg.id && msg.elected == -1) {
@@ -211,6 +222,7 @@ void *handle_election() {
     elected_server = server_id;
     is_participating = -1;
     send_election_message(msg);
+    pthread_mutex_unlock(&election_mutex);
     return NULL;
   }
 
@@ -219,6 +231,7 @@ void *handle_election() {
     is_participating = -1;
     elected_server = msg.id;
     send_election_message(msg);
+    pthread_mutex_unlock(&election_mutex);
     return NULL;
   }
 
@@ -227,13 +240,77 @@ void *handle_election() {
     msg.elected = -1;
     is_participating = 0;
     send_election_message(msg);
+    pthread_mutex_unlock(&election_mutex);
     return NULL;
   }
 
   if (server_id < msg.id) {
     send_election_message(msg);
+    pthread_mutex_unlock(&election_mutex);
     return NULL;
   }
 
+  pthread_mutex_unlock(&election_mutex);
   return NULL;
+}
+void *listen_for_heartbeat(void *arg) {
+  setup_election_socket(HEARTBEAT_PORT);
+  int client_fd;
+  struct sockaddr_in client_addr;
+  socklen_t addr_len = sizeof(client_addr);
+
+  while (1) {
+    client_fd =
+        accept(heartbeat_sockfd, (struct sockaddr *)&client_addr, &addr_len);
+    if (client_fd < 0) {
+      perror("Heartbeat accept failed");
+      continue;
+    }
+    close(client_fd); // Connection closed after successful heartbeat
+  }
+
+  fprintf(stderr, "rcv heardbeat\n");
+  close(heartbeat_sockfd); // Cleanup socket
+  return NULL;
+}
+
+void *send_heartbeat(void *arg) {
+
+  while (elected_server < 0)
+    ;
+
+  while (1) {
+    int sockfd;
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(HEARTBEAT_PORT);
+
+    inet_pton(AF_INET, server_ips[next_server], &addr.sin_addr);
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+      perror("Socket creation failed");
+      sleep(1);
+      continue;
+    }
+
+    sleep(HEARTBEAT_INTERVAL);
+
+    fprintf(stderr, "Sending heartbet\n");
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+      perror("Next server failed. Restructuring ring...\n");
+
+      close(sockfd); // Close socket after failure
+
+      pthread_mutex_lock(&election_mutex);
+      next_server = (next_server + 1) % total_servers;
+      pthread_mutex_unlock(&election_mutex);
+
+      start_election();
+
+      continue;
+    }
+
+    close(sockfd); // Close socket after successful heartbeat
+  }
 }
