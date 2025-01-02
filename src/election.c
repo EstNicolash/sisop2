@@ -15,6 +15,11 @@ int elected_server = -1;
 int next_server = -1;
 int is_participating = -1;
 int server_id = -1;
+int alive_servers[3] = {0};
+
+int read_listen_sockfd;
+int heartbeat_sockfd;
+int elected_server;
 
 void get_local_ip(char *buffer) {
   char hostname[256];
