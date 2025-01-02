@@ -227,10 +227,10 @@ void *heartbeat_thread(void *arg) {
 }
 
 int client_connect(const char *server_ip, int port) {
-  int tem_sockfd;
+  int temp_sockfd;
   struct sockaddr_in serv_addr;
 
-  if ((tem_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+  if ((temp_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     perror("ERROR opening socket");
     return -1;
   }
@@ -240,12 +240,12 @@ int client_connect(const char *server_ip, int port) {
 
   if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
     perror("Invalid IP address or address not supported");
-    close(tem_sockfd);
+    close(temp_sockfd);
     return -1;
   }
 
   printf("Attempting connection\n");
-  if (connect(tem_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
+  if (connect(temp_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
       0) {
     perror("ERROR connecting");
     close(sockfd);
@@ -253,5 +253,5 @@ int client_connect(const char *server_ip, int port) {
   }
 
   printf("Connected\n");
-  return sockfd;
+  return temp_sockfd;
 }

@@ -23,6 +23,11 @@
 #define GET_SYNC_DIR_STR "get_sync_dir"
 #define EXIT_STR "exit"
 
+char next_server_ip[256] = {""};
+int sockfd, prop_read_sockfd, prop_write_sockfd;
+int port = -1;
+char server_ip[256] = {""};
+char client_id[1024];
 // pthread_mutex_t client_sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 int client_connect(const char *server_ip, int port);
 
