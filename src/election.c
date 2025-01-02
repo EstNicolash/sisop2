@@ -2,13 +2,13 @@
 #include "../headers/protocol.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 char server_ips[MAX_SERVERS][MAX_LINE_LENGTH];
 int total_servers = 0;
 int elected_server = -1;
@@ -22,15 +22,30 @@ int heartbeat_sockfd;
 int elected_server;
 
 void get_local_ip(char *buffer) {
-  char hostname[256];
-  struct hostent *host_entry;
+  struct ifaddrs *ifaddr, *ifa;
+  int family;
 
-  gethostname(hostname, sizeof(hostname)); // Get the hostname
-  host_entry = gethostbyname(hostname);    // Get host info
-  strcpy(
-      buffer,
-      inet_ntoa(
-          *((struct in_addr *)host_entry->h_addr_list[0]))); // Get IP as string
+  if (getifaddrs(&ifaddr) == -1) {
+    perror("getifaddrs");
+    strcpy(buffer, "127.0.0.1"); // Fallback to localhost
+    return;
+  }
+
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+    if (ifa->ifa_addr == NULL)
+      continue;
+
+    family = ifa->ifa_addr->sa_family;
+
+    if (family == AF_INET && strcmp(ifa->ifa_name, "lo") != 0) {
+      // Exclude loopback ("lo") interface
+      getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), buffer, NI_MAXHOST,
+                  NULL, 0, NI_NUMERICHOST);
+      break; // Use the first valid interface found
+    }
+  }
+
+  freeifaddrs(ifaddr);
 }
 
 void read_server_config() {
