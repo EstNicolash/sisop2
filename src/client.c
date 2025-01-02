@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  // printf("SOCKETS: %d,%d\n", sockfd, prop_read_sockfd);
+  printf("SOCKETS: %d,%d,%d\n", sockfd, prop_read_sockfd, prop_write_sockfd);
 
   if (client_send_id(sockfd, client_id) != 0) {
     fprintf(stderr, "Error sending ID\n");
