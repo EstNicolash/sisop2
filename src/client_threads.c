@@ -6,7 +6,8 @@ int is_inotify_running = 0;
 int is_messages_running = 0;
 int is_rcv_propagation_running = 0;
 
-IgnoreList ignore_files[50];
+IgnoreEntry ignore_files[MAX_IGNORE_FILES];
+TimedIgnoreEntry timed_ignore_files[MAX_IGNORE_FILES];
 pthread_mutex_t ignore_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *rcv_propagation_thread(void *arg) {
@@ -140,10 +141,13 @@ void monitor_sync_dir(int sockfd) {
 
       if (event->mask & IN_MODIFY || event->mask & IN_CREATE) {
 
-        fprintf(stderr, "MODIFY or CREATE: %s", event->name);
-        if (!is_ignored(file_path)) {
+        fprintf(stderr, "MODIFY or CREATE: %s\n", event->name);
+        fprintf(stderr, "status: %d,%d\n", is_timed_ignored(file_path),
+                is_ignored(file_path));
+        if (is_timed_ignored(file_path) == 0 && is_ignored(file_path) == 0) {
+          fprintf(stderr, "aaaaa\n");
           msg_queue_insert(C_UPLOAD, file_path);
-          add_to_ignore_list(file_path); // Prevent re-trigger
+          add_to_timed_ignore_list(file_path); // Prevent re-trigger
         }
       }
 

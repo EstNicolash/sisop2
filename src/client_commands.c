@@ -30,11 +30,12 @@ int client_delete_propagation(int sockfd) {
   }
 
   char file_path[MAX_PAYLOAD_SIZE * 2];
+
+  add_to_ignore_list(file_path);
   snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, msg._payload);
-
   delete_file(file_path);
-
   send_message(sockfd, ack);
+  remove_from_ignore_list(file_path);
   return -1;
 }
 int client_rcv_propagation(int sockfd) {
@@ -86,12 +87,13 @@ int client_rcv_propagation(int sockfd) {
   uint32_t out_total_size;
   FileInfo fileinfo;
 
-  add_to_ignore_list(server_file_metada.filename);
-
+  add_to_ignore_list(file_path);
   fprintf(stderr, "Saving file\n");
   char dir[MAX_FILENAME_SIZE] = SYNC_DIR;
   char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
   save_file(fileinfo.filename, dir, file_data, out_total_size);
+
+  remove_from_ignore_list(file_path);
   free(file_data);
 
   // fprintf(stderr, "No file\n");
@@ -342,37 +344,88 @@ int get_sync_dir(int sockfd) {
   return 0;
 }
 
-// Add file to ignore list
-void add_to_ignore_list(const char *file) {
+void add_to_timed_ignore_list(const char *file) {
   pthread_mutex_lock(&ignore_mutex);
   time_t now = time(NULL);
 
-  for (int i = 0; i < 50; i++) {
-    if (ignore_files[i].file[0] == '\0') {
-      strncpy(ignore_files[i].file, file, sizeof(ignore_files[i].file));
-      ignore_files[i].timestamp = now;
+  for (int i = 0; i < MAX_IGNORE_FILES; i++) {
+    if (timed_ignore_files[i].file[0] == '\0') {
+      strncpy(timed_ignore_files[i].file, file,
+              sizeof(timed_ignore_files[i].file) - 1);
+      timed_ignore_files[i].file[sizeof(timed_ignore_files[i].file) - 1] = '\0';
+      timed_ignore_files[i].timestamp = now;
       break;
     }
   }
+
   pthread_mutex_unlock(&ignore_mutex);
 }
 
-// Check if file is in ignore list
-int is_ignored(const char *file) {
+// Check if file is in timed ignore list
+int is_timed_ignored(const char *file) {
+  int ignored = 0;
   pthread_mutex_lock(&ignore_mutex);
   time_t now = time(NULL);
 
-  for (int i = 0; i < 50; i++) {
-    if (strcmp(ignore_files[i].file, file) == 0) {
-      if ((now - ignore_files[i].timestamp) < IGNORE_TIME) {
-        pthread_mutex_unlock(&ignore_mutex);
-        return 1; // File is still ignored
+  for (int i = 0; i < MAX_IGNORE_FILES; i++) {
+    if (strcmp(timed_ignore_files[i].file, file) == 0) {
+      if ((now - timed_ignore_files[i].timestamp) < IGNORE_TIME) {
+        ignored = 1; // File is still within ignore period
       } else {
-        // Remove file from ignore list if time expired
-        ignore_files[i].file[0] = '\0';
+        // Expired, remove from list
+        timed_ignore_files[i].file[0] = '\0';
       }
+      break;
     }
   }
+
   pthread_mutex_unlock(&ignore_mutex);
-  return 0;
+  return ignored;
+}
+
+// ====== Functions for Permanent Ignore List ======
+
+// Add file to permanent ignore list
+void add_to_ignore_list(const char *file) {
+  pthread_mutex_lock(&ignore_mutex);
+
+  for (int i = 0; i < MAX_IGNORE_FILES; i++) {
+    if (ignore_files[i].file[0] == '\0') {
+      strncpy(ignore_files[i].file, file, sizeof(ignore_files[i].file) - 1);
+      ignore_files[i].file[sizeof(ignore_files[i].file) - 1] = '\0';
+      break;
+    }
+  }
+
+  pthread_mutex_unlock(&ignore_mutex);
+}
+
+// Remove file from permanent ignore list
+void remove_from_ignore_list(const char *file) {
+  pthread_mutex_lock(&ignore_mutex);
+
+  for (int i = 0; i < MAX_IGNORE_FILES; i++) {
+    if (strcmp(ignore_files[i].file, file) == 0) {
+      ignore_files[i].file[0] = '\0';
+      break;
+    }
+  }
+
+  pthread_mutex_unlock(&ignore_mutex);
+}
+
+// Check if file is in permanent ignore list
+int is_ignored(const char *file) {
+  int ignored = 0;
+  pthread_mutex_lock(&ignore_mutex);
+
+  for (int i = 0; i < MAX_IGNORE_FILES; i++) {
+    if (strcmp(ignore_files[i].file, file) == 0) {
+      ignored = 1;
+      break;
+    }
+  }
+
+  pthread_mutex_unlock(&ignore_mutex);
+  return ignored;
 }
