@@ -1,11 +1,34 @@
+#include "../headers/election.h"
 #include "../headers/server_handlers.h"
+
 #include <unistd.h>
 
 int server_setup(int port);
 int server_accept_client(int sockfd);
 void *client_handler(void *arg);
+void *election_manager(void *arg);
+
+pthread_mutex_t election_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t election_cond = PTHREAD_COND_INITIALIZER;
+
 #define PORT 48487
 int main() {
+
+  // ELECTION
+  pthread_t election_manager_thread;
+  if (pthread_create(&election_manager_thread, NULL, election_manager, NULL) !=
+      0) {
+    perror("Thread creation failed\n");
+    exit(EXIT_FAILURE);
+  }
+
+  pthread_mutex_lock(&election_mutex);
+  while (server_id != elected_server) {
+    pthread_cond_wait(&election_cond, &election_mutex);
+  }
+  pthread_mutex_unlock(&election_mutex);
+
+  /*CLIENT*/
   int server_fd = server_setup(PORT);
   int client_propagation_read_fd = server_setup(PORT + 1);
   int client_propagation_write_fd = server_setup(PORT + 2);
@@ -80,6 +103,14 @@ int server_setup(int port) {
   }
 
   return sockfd;
+}
+
+void *election_manager(void *arg) {
+  handle_election();
+  pthread_mutex_lock(&election_mutex);
+  pthread_cond_signal(&election_cond);
+  pthread_mutex_unlock(&election_mutex);
+  return NULL;
 }
 
 void *client_handler(void *arg) {
