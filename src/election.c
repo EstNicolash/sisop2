@@ -201,11 +201,11 @@ void *handle_election() {
   fprintf(stderr, "handle election\n");
 
   if (msg.elected == 0 && server_id == msg.id) {
-    fprintf(stderr, "Server %d elected\n", msg.id);
+    fprintf(stderr, "Loop 2: Server %d elected\n", msg.id);
     return NULL;
   }
   if (server_id == msg.id && msg.elected == -1) {
-    fprintf(stderr, "Server %d elected\n", msg.id);
+    fprintf(stderr, "Loop 1: Server %d elected\n", msg.id);
     msg.elected = 0;
     msg.id = server_id;
     elected_server = server_id;
@@ -215,6 +215,7 @@ void *handle_election() {
   }
 
   if (msg.elected != -1) {
+    fprintf(stderr, "Server %d elected\n", msg.id);
     is_participating = -1;
     elected_server = msg.id;
     send_election_message(msg);
