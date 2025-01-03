@@ -209,6 +209,10 @@ void *heartbeat_thread(void *arg) {
 
       sleep(HEARTBEAT_INTERVAL);
 
+      close(sockfd);
+      close(prop_read_sockfd);
+      close(prop_write_sockfd);
+
       fprintf(stderr, "Next server = %s\n", next_server_ip);
       sockfd = client_connect(next_server_ip, port);
       sleep(1);
