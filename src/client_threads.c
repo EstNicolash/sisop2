@@ -16,7 +16,7 @@ void *rcv_propagation_thread(void *arg) {
 
   while (is_rcv_propagation_running == 0) {
     char msg[MAX_PAYLOAD_SIZE];
-
+    fprintf(stderr, "test rcvprop\n");
     if (rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt) == -1)
       continue;
 
@@ -204,20 +204,30 @@ void *heartbeat_thread(void *arg) {
 
     sleep(HEARTBEAT_INTERVAL);
 
-    fprintf(stderr, "Sending heartbet\n");
+    // fprintf(stderr, "Sending heartbet\n");
     if (connect(temp_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 
       sleep(HEARTBEAT_INTERVAL);
 
+      close(sockfd);
+      close(prop_read_sockfd);
+      close(prop_write_sockfd);
+
+      fprintf(stderr, "Next server = %s\n", next_server_ip);
       sockfd = client_connect(next_server_ip, port);
       sleep(1);
       prop_read_sockfd = client_connect(next_server_ip, port + 1);
       sleep(1);
       prop_write_sockfd = client_connect(next_server_ip, port + 2);
 
+      fprintf(stderr, "Sockets = %d,%d,%d\n", sockfd, prop_read_sockfd,
+              prop_write_sockfd);
+
       strcpy(server_ip, next_server_ip);
 
       client_send_id(sockfd, client_id);
+
+      fprintf(stderr, "Next server = %s\n", next_server_ip);
     }
 
     continue;
@@ -227,10 +237,10 @@ void *heartbeat_thread(void *arg) {
 }
 
 int client_connect(const char *server_ip, int port) {
-  int tem_sockfd;
+  int temp_sockfd;
   struct sockaddr_in serv_addr;
 
-  if ((tem_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+  if ((temp_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     perror("ERROR opening socket");
     return -1;
   }
@@ -240,18 +250,18 @@ int client_connect(const char *server_ip, int port) {
 
   if (inet_pton(AF_INET, server_ip, &serv_addr.sin_addr) <= 0) {
     perror("Invalid IP address or address not supported");
-    close(tem_sockfd);
+    close(temp_sockfd);
     return -1;
   }
 
   printf("Attempting connection\n");
-  if (connect(tem_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
+  if (connect(temp_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
       0) {
     perror("ERROR connecting");
-    close(sockfd);
+    close(temp_sockfd);
     return -1;
   }
 
   printf("Connected\n");
-  return sockfd;
+  return temp_sockfd;
 }

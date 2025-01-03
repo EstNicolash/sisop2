@@ -296,7 +296,7 @@ void *send_heartbeat(void *arg) {
 
     sleep(HEARTBEAT_INTERVAL);
 
-    fprintf(stderr, "Sending heartbet\n");
+    // fprintf(stderr, "Sending heartbeat\n");
     if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
       perror("Next server failed. Restructuring ring...\n");
 

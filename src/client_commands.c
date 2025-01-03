@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include <string.h>
 
+char next_server_ip[256] = {""};
 int sockfd, prop_read_sockfd, prop_write_sockfd;
 int port = -1;
 char server_ip[256] = {""};
-char next_server_ip[256] = {""};
 char client_id[1024];
 
 int client_exit(int sockfd) {

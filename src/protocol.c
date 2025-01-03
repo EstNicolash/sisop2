@@ -36,9 +36,11 @@ int rcv_message(int sockfd, uint16_t type, uint16_t seqn, packet *rcv_pkt) {
 
 // Rewrite this in the future:
 start:
+
   bytes_received = recv(sockfd, buffer, MAX_PAYLOAD_SIZE, 0);
+
   if (bytes_received < 0) {
-    perror("Error receiving data");
+    perror("Error receiving data\n");
     return -1;
   }
 
