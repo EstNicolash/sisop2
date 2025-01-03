@@ -209,15 +209,21 @@ void *heartbeat_thread(void *arg) {
 
       sleep(HEARTBEAT_INTERVAL);
 
+      fprintf(stderr, "Next server = %s\n", next_server_ip);
       sockfd = client_connect(next_server_ip, port);
       sleep(1);
       prop_read_sockfd = client_connect(next_server_ip, port + 1);
       sleep(1);
       prop_write_sockfd = client_connect(next_server_ip, port + 2);
 
+      fprintf(stderr, "Sockets = %d,%d,%d\n", sockfd, prop_read_sockfd,
+              prop_write_sockfd);
+
       strcpy(server_ip, next_server_ip);
 
       client_send_id(sockfd, client_id);
+
+      fprintf(stderr, "Next server = %s\n", next_server_ip);
     }
 
     continue;
@@ -248,7 +254,7 @@ int client_connect(const char *server_ip, int port) {
   if (connect(temp_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) <
       0) {
     perror("ERROR connecting");
-    close(sockfd);
+    close(temp_sockfd);
     return -1;
   }
 
