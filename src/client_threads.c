@@ -16,7 +16,7 @@ void *rcv_propagation_thread(void *arg) {
 
   while (is_rcv_propagation_running == 0) {
     char msg[MAX_PAYLOAD_SIZE];
-
+    fprintf(stderr, "test rcvprop\n");
     if (rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt) == -1)
       continue;
 
@@ -204,7 +204,7 @@ void *heartbeat_thread(void *arg) {
 
     sleep(HEARTBEAT_INTERVAL);
 
-    fprintf(stderr, "Sending heartbet\n");
+    // fprintf(stderr, "Sending heartbet\n");
     if (connect(temp_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 
       sleep(HEARTBEAT_INTERVAL);
