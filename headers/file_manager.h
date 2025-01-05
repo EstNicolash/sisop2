@@ -2,6 +2,7 @@
 #define FILEMANAGER_H
 
 #define MAX_FILENAME_SIZE 1024
+#define SYNC_DIR "sync_dir"
 #include <stdint.h>
 #include <time.h>
 
@@ -13,7 +14,12 @@ typedef struct FileInfo {
   time_t last_accessed;
   time_t creation_time;
   unsigned char md5_checksum[33];
+  char original_ip[MAX_FILENAME_SIZE];
 } FileInfo;
+
+typedef struct UserInfo {
+  char user_id[MAX_FILENAME_SIZE];
+} UserInfo;
 
 // Create a directory by it name
 int create_directory(const char dir_name[MAX_FILENAME_SIZE]);

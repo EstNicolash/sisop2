@@ -1,4 +1,5 @@
 #include "../headers/file_manager.h"
+#include "../headers/election.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -80,6 +81,7 @@ FileInfo get_file_info(const char file_name[MAX_FILENAME_SIZE]) {
   info.last_modified = st.st_mtime;
   info.last_accessed = st.st_atime;
   info.creation_time = st.st_ctime;
+  get_local_ip(info.original_ip);
 
   md5_checksum = fileMd5(file_name);
   if (md5_checksum) {
@@ -129,6 +131,7 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count) {
     files[*file_count].last_accessed = st.st_atime;
     files[*file_count].creation_time = st.st_ctime;
     memcpy(files[*file_count].md5_checksum, fileMd5(file_path), 33);
+    get_local_ip(files[*file_count].original_ip);
     (*file_count)++;
   }
 

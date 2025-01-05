@@ -24,7 +24,7 @@ int propagate_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE],
 
 int server_handles_download(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
 
-int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
+int server_handles_upload(int sockfd, char user_id[MAX_FILENAME_SIZE]);
 
 int server_handles_list_server(int sockfd,
                                const char user_id[MAX_FILENAME_SIZE]);
@@ -39,5 +39,7 @@ int remove_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd);
 int add_connection(const char user_id[MAX_FILENAME_SIZE], int normal_sockfd,
                    int propagation_r_sockfd, int propagation_w_sockfd);
 void map_init();
+
+int send_replica(char dir[MAX_FILENAME_SIZE]);
 
 #endif
