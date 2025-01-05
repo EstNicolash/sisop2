@@ -2,8 +2,15 @@
 #define ELECTION_H
 #include <pthread.h>
 #define CONFIG_FILE_NAME "server_config.csv"
-#define ELECTION_PORT 50000
-#define HEARTBEAT_PORT 50001
+#define ELECTION_PORT2 50000
+#define HEARTBEAT_PORT2 50001
+#define REPLICA_PORT2 50010
+#define REPLICA_SEND_PORT2 50011
+
+#define ELECTION_PORT 50020
+#define HEARTBEAT_PORT 50021
+#define REPLICA_PORT 50011
+#define REPLICA_SEND_PORT 50010
 
 #define MAX_LINE_LENGTH 256
 #define MAX_SERVERS 3
@@ -41,5 +48,6 @@ void set_servers();
 //
 void *send_heartbeat(void *arg);
 void *listen_for_heartbeat(void *arg);
+void *replica_handler(void *arg);
 
 #endif

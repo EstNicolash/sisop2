@@ -7,8 +7,11 @@ int server_setup(int port);
 int server_accept_client(int sockfd);
 void *client_handler(void *arg);
 void *election_manager(void *arg);
+void *listen_for_replica(void *arg);
+void *receive_user_dir(int sockfd, const char user_id[MAX_FILENAME_SIZE]);
 
-#define PORT 48487
+#define PORT2 48487
+#define PORT 48480
 int main() {
 
   // ELECTION
@@ -41,6 +44,12 @@ int main() {
     pthread_cond_wait(&election_cond, &election_mutex);
   }
   pthread_mutex_unlock(&election_mutex);
+
+  pthread_t replica_thread;
+  if (pthread_create(&replica_thread, NULL, listen_for_replica, &next_server) != 0) {
+    perror("Thread creation failed\n");
+    exit(EXIT_FAILURE);
+  }
 
   /*CLIENT*/
   int server_fd = server_setup(PORT);
@@ -214,5 +223,136 @@ end:
   remove_connection(user_id, sockfd);
   close(sockfd);
   printf("Connection with client %s closed.\n", user_id);
+  return NULL;
+}
+
+void *listen_for_replica(void *arg) {
+  int replica_fd = server_setup(REPLICA_PORT);
+  int *client_fd = malloc(sizeof(int));
+  struct sockaddr_in client_addr;
+  socklen_t addr_len = sizeof(client_addr);
+
+  while (1) {
+    *client_fd = accept(replica_fd, (struct sockaddr *)&client_addr, &addr_len);
+    if (client_fd < 0) {
+      perror("Heartbeat accept failed");
+      continue;
+    }
+
+    pthread_t tid;
+    if (pthread_create(&tid, NULL, replica_handler, client_fd) != 0) {
+      perror("Thread creation failed");
+      close(*client_fd);
+      free(client_fd);
+    }
+
+    pthread_detach(tid);
+  }
+
+  fprintf(stderr, "rcv heardbeat\n");
+  close(replica_fd); // Cleanup socket
+  return NULL;
+}
+
+void *replica_handler(void *arg) {
+  int *sockfd = (int *)arg;
+  char user_id[MAX_FILENAME_SIZE] = {0};
+
+  printf("Client replica_handler\n");
+
+  if (server_handles_id(*sockfd, user_id) > 0){
+    receive_user_dir(*sockfd, user_id);
+  }
+
+  printf("Client replica_handler exit\n");
+
+  return NULL;
+}
+
+void *receive_user_dir(int sockfd, const char user_id[MAX_FILENAME_SIZE]){
+  create_directory(user_id);
+
+  int server_file_count = 0;
+  FileInfo *server_files = receive_file_list(sockfd, &server_file_count);
+
+  if (server_files == NULL) {
+    perror("error receiving files list from server\n");
+    return NULL;
+  }
+
+  print_file_list(server_files, server_file_count);
+
+  char local_ip[MAX_FILENAME_SIZE] = {0};
+  get_local_ip(local_ip);
+
+  // Local file LISt
+  int local_file_count = 0;
+  FileInfo *local_files = list_files(user_id, &local_file_count);
+
+  FileInfo *to_delete_files = malloc(local_file_count * sizeof(FileInfo));
+  FileInfo *to_download_files = malloc(server_file_count * sizeof(FileInfo));
+  if (!to_delete_files || !to_download_files) {
+    perror("Memory allocation failed\n");
+    return NULL;
+  }
+
+  int to_delete_count = 0;
+  int to_download_count = 0;
+
+  // Identify files to download
+  for (int i = 0; i < server_file_count; i++) {
+    if (strcmp(server_files[i].original_ip, local_ip) != 0) {
+      int found = 0;
+      for (int j = 0; j < local_file_count; j++) {
+        if (strcmp(server_files[i].filename, local_files[j].filename) == 0) {
+          found = 1;
+
+          if (strcmp((char *)server_files[i].md5_checksum,
+                    (char *)local_files[j].md5_checksum) != 0) {
+
+            to_download_files[to_download_count++] = server_files[i];
+          }
+          break;
+        }
+      }
+      if (!found) {
+        to_download_files[to_download_count++] = server_files[i];
+      }
+    }
+    else{
+      break;
+    }
+  }
+
+  // Identify files to delete
+  for (int i = 0; i < local_file_count; i++) {
+    int found = 0;
+    for (int j = 0; j < server_file_count; j++) {
+      if (strcmp(local_files[i].filename, server_files[j].filename) == 0) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      to_delete_files[to_delete_count++] = local_files[i];
+    }
+  }
+
+  free(local_files);
+  free(server_files);
+
+  for (int i = 0; i < to_delete_count; i++) {
+    char file_path[MAX_PAYLOAD_SIZE * 2];
+    snprintf(file_path, sizeof(file_path), "%s/%s", user_id,
+             to_delete_files[i].filename);
+    delete_file(file_path);
+  }
+
+  for (int i = 0; i < to_download_count; i++) {
+    //client_download_file(sockfd, to_download_files[i].filename, user_id);
+  }
+
+  free(to_delete_files);
+  free(to_download_files);
   return NULL;
 }

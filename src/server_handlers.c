@@ -1,6 +1,7 @@
 #include "../headers/server_handlers.h"
 #include "../headers/connection_map.h"
 #include "../headers/election.h"
+#include "../headers/client_commands.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +21,7 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
   return 1;
 }
 
-int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
+int server_handles_upload(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
 
   // Send ACK start
   packet ack = create_packet(OK, C_UPLOAD, 0, "ok", 2);
@@ -31,6 +32,8 @@ int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
   char *file_buffer = receive_file(sockfd, &size, &metadada);
 
   save_file(metadada.filename, user_id, file_buffer, size);
+
+  send_replica(user_id);
 
   if (propagate_to_client(sockfd, user_id, metadada.filename) != 0) {
     fprintf(stderr, "Error propagating to client\n");
@@ -242,6 +245,70 @@ int remove_connection(const char user_id[MAX_FILENAME_SIZE],
   connection_map_delete(user_id, normal_sockfd);
 
   return 0;
+}
+
+int send_replica(char dir[MAX_FILENAME_SIZE]) {
+  printf("send_replica\n");
+
+  int sockfd;
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(REPLICA_SEND_PORT);
+
+  inet_pton(AF_INET, server_ips[next_server], &addr.sin_addr);
+
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) {
+    perror("Socket creation failed");
+    return -1;
+  }
+
+  int file_count = 0;
+  FileInfo *files = list_files(dir, &file_count);
+  print_file_list(files, file_count);
+
+  if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+    printf("send_replica sending files\n");
+
+    client_send_id(sockfd, dir);
+
+    packet num_pkt = create_packet(OK, C_LIST_SERVER, file_count, "ok", 2);
+
+    if (send_message(sockfd, num_pkt) != 0) {
+      perror("Filed send num_pkt\n");
+      return -1;
+    }
+
+    uint16_t seqn = 1;
+    for (int i = 0; i < file_count; i++) {
+      packet pkt = create_packet(C_LIST_SERVER, seqn, file_count, "ok", 2);
+
+      memcpy(pkt._payload, &files[i], sizeof(FileInfo));
+      pkt.length = sizeof(FileInfo);
+
+      if (send_message(sockfd, pkt) != 0) {
+        perror("Failed send pkt\n");
+        return -1;
+      }
+      else{
+        printf("send_replica file sent: %s\n", files[i].filename);
+      }
+
+      seqn++;
+    }
+
+    // Ensure EOF packet is properly sent and handled
+    packet eof_pkt = create_packet(END_OF_FILE, seqn, file_count, "eof", 3);
+    if (send_message(sockfd, eof_pkt) != 0) {
+      perror("Send failed during EOF transfer");
+      free(files);
+      return -1;
+    }
+
+    return 0;
+  }
+
+  return -1;
 }
 
 void map_init() { connection_map_init(); }
