@@ -70,13 +70,13 @@ void *replica_handler(void *arg) {
 
   char user_id[MAX_FILENAME_SIZE] = {0};
     packet received_packet;
-    if (rcv_message(sockfd, S_PROPAGATE, 0, &received_packet) != 0) {
+    if (rcv_message(sockfd, ANYTHING, 0, &received_packet) != 0) {
       fprintf(stderr, "Failed to receive packet");
     };
 
-
-    
-     strncpy(user_id, received_packet._payload, MAX_FILENAME_SIZE);
+	
+    if(received_packet.type == C_UPLOAD){
+      strncpy(user_id, received_packet._payload, MAX_FILENAME_SIZE);
 
      
      packet ack_pkt = create_packet(OK,S_PROPAGATE,0,"ok",2);
@@ -98,6 +98,44 @@ void *replica_handler(void *arg) {
      FileInfo fileinfo;	
      char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
      save_file(fileinfo.filename, user_id, file_data, out_total_size);
+    
+    	continue;
+    }
+    
+    
+    if(received_packet.type == C_DELETE){
+    
+    
+	  packet ack = create_packet(OK, C_DELETE, 0, "ok", 2);
+
+	  fprintf(stderr, "Teste A\n");
+	  // Send ack
+	  
+	  if (send_message(sockfd, ack) != 0) {
+	    perror("Error sending ack msg\n");
+	    continue;
+	  }
+
+	  fprintf(stderr, "Teste B\n");
+	  // rcv metada
+
+	  packet msg;
+	  if (rcv_message(sockfd, S_PROPAGATE, C_DELETE, &msg) != 0) {
+	    perror("Error rcv_message ack propagate\n");
+	    continue;
+	  }
+
+	  char file_path[MAX_PAYLOAD_SIZE * 2];
+
+	
+	  snprintf(file_path, sizeof(file_path), "%s/%s", user_id, msg._payload);
+	  delete_file(file_path);
+	  send_message(sockfd, ack);
+	  
+    	continue;
+    }
+    
+   
 	    
 
 
@@ -113,7 +151,7 @@ void *replica_handler(void *arg) {
 int propagate_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                         const char filename[MAX_FILENAME_SIZE]) {
 
-  packet msg = create_packet(S_PROPAGATE, 0, 0, "upload", 6);
+  packet msg = create_packet(C_UPLOAD, 0, 0, "upload", 6);
   strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
   msg.length = strlen(msg._payload);
 
@@ -126,7 +164,7 @@ int propagate_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
 
   fprintf(stderr, "Receiving ok\n");
   // rcv Ack client command
-  if (rcv_message(sockfd, OK, S_PROPAGATE, &msg) != 0) {
+  if (rcv_message(sockfd, OK, C_UPLOAD, &msg) != 0) {
     perror("Error rcv_message ack propagate\n");
     return -1;
   }
@@ -141,13 +179,52 @@ int propagate_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
   }
 
   fprintf(stderr, "Receiving ACK\n");
-  if (rcv_message(sockfd, OK, S_PROPAGATE, &msg) != 0) {
+  if (rcv_message(sockfd, OK, C_UPLOAD, &msg) != 0) {
     perror("Error rcv_message ack propagate or checksum or no file\n");
     return -1;
   }
 
   fprintf(stderr, "Teste 5\n");
   return send_file(sockfd, file_path);
+}
+
+int propagate_delete_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                     const char filename[MAX_FILENAME_SIZE]) {
+
+  packet msg = create_packet(C_DELETE, 0, 0, "a", 1);
+  strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
+  msg.length = strlen(msg._payload);
+ 
+  if (send_message(sockfd, msg) != 0) {
+    perror("Error sending propagate msg\n");
+    return -1;
+  }
+  
+  fprintf(stderr, "Teste 1\n");
+  
+  if (rcv_message(sockfd, OK, C_DELETE, &msg) != 0) {
+    perror("Error rcv_message ack propagate\n");
+    return -1;
+  }
+
+  fprintf(stderr, "Teste 2\n");
+
+  packet to_delete =
+      create_packet(S_PROPAGATE, C_DELETE, 0, filename, strlen(filename));
+  if (send_message(sockfd, to_delete) != 0) {
+    fprintf(stderr, "error or equal checksum\n");
+    return -1;
+  }
+
+  fprintf(stderr, "Teste 4\n");
+  
+  if (rcv_message(sockfd, OK, C_DELETE, &msg) != 0) {
+    perror("Error rcv_message ack propagate or checksum or no file\n");
+    return -1;
+  }
+
+  fprintf(stderr, "Teste 5\n");
+  return 0;
 }
 
 int replica_connect(const char *server_ip) {
