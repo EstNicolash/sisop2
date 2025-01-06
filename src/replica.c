@@ -37,7 +37,7 @@ void *listen_for_replica_connection(void *arg){
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
     int *client_fd = malloc(sizeof(int));
-    printf(stderr, "listen replica\n");	  
+    fprintf(stderr, "listen replica\n");	  
     *client_fd =
         accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
 
