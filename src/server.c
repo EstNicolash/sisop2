@@ -56,6 +56,7 @@ int main() {
   
   for(int i =0; i < server_id; i++){
   	replica_sockets[i] = replica_connect(server_ips[i]);
+	fprintf(stderr, "Replica Sockets: %d\n", replica_sockets[i]);
   }
   
 	
