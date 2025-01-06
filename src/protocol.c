@@ -154,7 +154,7 @@ FileInfo rcv_metadata(int sockfd) {
 }
 
 int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
-  //  fprintf(stderr, "Send_file(%d, %s)\n", sockfd, file_name);
+   fprintf(stderr, "Send_file(%d, %s)\n", sockfd, file_name);
 
   // printf("Metadata sended\n");
   size_t read_size;
@@ -176,7 +176,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     }
 
     total += bytes_sent;
-    // printf("Sent %ld bytes Toal:%ld\n", bytes_sent, total);
+    printf("Sent %ld bytes Toal:%ld\n", bytes_sent, total);
   }
 
   // printf("end seq\n");
@@ -188,7 +188,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   //   return -1;
   // }
 
-  // printf("Ack sended\n");
+   printf("Ack sended\n");
   //  Wait for acknowledgment from the server
   packet ack_pkt;
   if (rcv_message(sockfd, OK, END_OF_FILE, &ack_pkt) != 0) {
@@ -197,8 +197,8 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
-  //  printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
-  //       total_size);
+  printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
+        total_size);
 
   close(file_fd);
   return 0;
@@ -213,8 +213,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
   // Receive Metadata
   *file_info = rcv_metadata(socket_fd);
 
-  // printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
-  //      file_info->last_modified);
+  printf("Receiving file '%s' (last modified: %ld)\n", file_info->filename,
+        file_info->last_modified);
 
   // Prepare to receive file data
 
@@ -249,8 +249,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     memcpy(file_data + received_size, buffer, bytes_received);
     received_size += bytes_received;
 
-    // printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
-    //     received_size);
+     printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
+         received_size);
   }
 
   // Receive the EOF packet
@@ -270,8 +270,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     return NULL;
   }
 
-  // printf("File received successfully: '%s', total size = %u bytes\n",
-  //       file_info->filename, total_size);
+  printf("File received successfully: '%s', total size = %u bytes\n",
+        file_info->filename, total_size);
 
   return file_data;
 }
