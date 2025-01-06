@@ -107,6 +107,10 @@ int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
 
   delete_file(file_path);
   propagate_delete(sockfd, user_id, delete_pkt._payload);
+  for(int i = 0; i < server_id; i++){
+  	propagate_delete_to_backup(replica_sockets[i], user_id, delete_pkt._payload);
+  }
+  
 
   packet ack = create_packet(OK, C_DELETE, 0, "ok", 2);
 
