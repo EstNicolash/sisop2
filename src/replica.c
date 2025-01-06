@@ -78,7 +78,7 @@ void *replica_handler(void *arg) {
     if(received_packet.type == C_UPLOAD){
       strncpy(user_id, received_packet._payload, MAX_FILENAME_SIZE);
 
-     mkdir(user_id, 0755);
+     create_directory(user_id);
      
      packet ack_pkt = create_packet(OK,S_PROPAGATE,0,"ok",2);
 
