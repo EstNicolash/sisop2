@@ -198,7 +198,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
   }
 
   printf("File sent successfully: %s (total size: %u bytes)\n", file_name,
-        total_size);
+        total);
 
   close(file_fd);
   return 0;
