@@ -10,4 +10,6 @@ void *listen_for_replica_connection(void *arg);
 int propagate_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                         const char filename[MAX_FILENAME_SIZE]);
 int replica_connect(const char *server_ip);
+int propagate_delete_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
+                     const char filename[MAX_FILENAME_SIZE]);
 #endif
