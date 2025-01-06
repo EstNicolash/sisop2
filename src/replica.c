@@ -74,14 +74,15 @@ void *replica_handler(void *arg) {
       fprintf(stderr, "Failed to receive packet");
     };
 
-	
+
+    fprintf(stderr, "msg readed\n");
     if(received_packet.type == C_UPLOAD){
       strncpy(user_id, received_packet._payload, MAX_FILENAME_SIZE);
 
      create_directory(user_id);
      
      packet ack_pkt = create_packet(OK,S_PROPAGATE,0,"ok",2);
-
+     fprintf(stderr, "sendig first ack replica\n");
      send_message(sockfd, ack_pkt);
 
      FileInfo server_file_metada = rcv_metadata(sockfd);
@@ -90,13 +91,15 @@ void *replica_handler(void *arg) {
 
           packet ack_err = create_packet(ERROR, ERROR, 0, "no", 2);
           send_message(sockfd, ack_err);
+          fprintf(stderr, "sendig first error replica\n");
           continue;
      }
 
-
+     fprintf(stderr, "sendig ack replica 2\n");
      send_message(sockfd, ack_pkt);
      uint32_t out_total_size;
      FileInfo fileinfo;	
+      fprintf(stderr, "receiving file\n");	    
      char *file_data = receive_file(sockfd, &out_total_size, &fileinfo);
      save_file(fileinfo.filename, user_id, file_data, out_total_size);
     
@@ -163,7 +166,7 @@ int propagate_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
   }
 
 
-  fprintf(stderr, "Receiving ok\n");
+  fprintf(stderr, "Receiving ack replica\n");
   // rcv Ack client command
   if (rcv_message(sockfd, OK, C_UPLOAD, &msg) != 0) {
     perror("Error rcv_message ack propagate\n");
