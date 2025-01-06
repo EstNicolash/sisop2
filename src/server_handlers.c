@@ -1,6 +1,8 @@
 #include "../headers/server_handlers.h"
 #include "../headers/connection_map.h"
 #include "../headers/election.h"
+#include "../headers/replica.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -26,15 +28,20 @@ int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
   packet ack = create_packet(OK, C_UPLOAD, 0, "ok", 2);
   send_message(sockfd, ack);
 
-  FileInfo metadada;
+  FileInfo metadata;
   uint32_t size = 0;
-  char *file_buffer = receive_file(sockfd, &size, &metadada);
+  char *file_buffer = receive_file(sockfd, &size, &metadata);
 
-  save_file(metadada.filename, user_id, file_buffer, size);
+  save_file(metadata.filename, user_id, file_buffer, size);
 
-  if (propagate_to_client(sockfd, user_id, metadada.filename) != 0) {
+  if (propagate_to_client(sockfd, user_id, metadata.filename) != 0) {
     fprintf(stderr, "Error propagating to client\n");
   }
+  
+  for(int i =0; i < server_id; i++){
+  	propagate_to_backup(replica_sockets[i], user_id, metadata.filename);
+  }
+  
 
   free(file_buffer);
 

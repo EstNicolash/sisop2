@@ -1,5 +1,6 @@
 #include "../headers/election.h"
 #include "../headers/server_handlers.h"
+#include "../headers/replica.h"
 
 #include <unistd.h>
 
@@ -35,13 +36,29 @@ int main() {
     perror("Thread creation failed\n");
     exit(EXIT_FAILURE);
   }
+  
+  
+  int replica_server_fd = setup_replica_socket();
+  
+  pthread_t replica_thread;
+  if (pthread_create(&replica_thread, NULL, listen_for_replica_connection, &replica_server_fd) != 0) {
+    perror("Thread creation failed\n");
+    exit(EXIT_FAILURE);
+  }
 
   pthread_mutex_lock(&election_mutex);
   while (server_id != elected_server) {
     pthread_cond_wait(&election_cond, &election_mutex);
   }
   pthread_mutex_unlock(&election_mutex);
-
+  
+  /*Primary Replica*/
+  
+  for(int i =0; i < server_id; i++){
+  	replica_sockets[i] = replica_connect(server_ips[i]);
+  }
+  
+	
   /*CLIENT*/
   int server_fd = server_setup(PORT);
   int client_propagation_read_fd = server_setup(PORT + 1);
