@@ -134,22 +134,27 @@ void send_election_message(struct election_msg msg) {
   addr.sin_port = htons(ELECTION_PORT);
   inet_pton(AF_INET, server_ips[next_server], &addr.sin_addr);
 
+  fprintf(stderr, "send_election_message: to %s", server_ips[next_server]);
   int sockfd;
-  while (1) {
+  int is_sended = 0;
+
+  while (is_sended == 0) {
+
+    sleep(1);
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
     if (sockfd <= 0) {
       perror("Socket creation failed");
       sleep(1);
       continue;
     }
 
-    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) > 0) {
+      is_sended = 1;
+    } else {
       perror("Connection failed, retrying...");
       close(sockfd);
-      sleep(1);
-      continue;
     }
-    break;
   }
 
   fprintf(stderr, "send_election_message sending message\n");
