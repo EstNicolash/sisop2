@@ -141,21 +141,23 @@ void send_election_message(struct election_msg msg) {
 
   while (is_sended == 0) {
 
-    fprintf(stderr, "send_election_message loop");
+    fprintf(stderr, "\t send_election_message loop\n");
 
     sleep(1);
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
+    fprintf(stderr, "\t sock\n");
     if (sockfd <= 0) {
       perror("Socket creation failed");
       sleep(1);
       continue;
     }
 
+    fprintf(stderr, "\t send_election_message tryconnect\n");
     if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) > 0) {
       is_sended = 1;
     } else {
-      perror("Connection failed, retrying...");
+      perror("\t Connection failed, retrying...");
       close(sockfd);
     }
   }
