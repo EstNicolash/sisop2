@@ -134,7 +134,8 @@ void send_election_message(struct election_msg msg) {
   addr.sin_port = htons(ELECTION_PORT);
   inet_pton(AF_INET, server_ips[next_server], &addr.sin_addr);
 
-  fprintf(stderr, "send_election_message: to %s", server_ips[next_server]);
+  fprintf(stderr, "send_election_message: to %s,%d\n", server_ips[next_server],
+          ELECTION_PORT);
   int sockfd;
   int is_sended = 0;
 
