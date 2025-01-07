@@ -137,7 +137,7 @@ void send_election_message(struct election_msg msg) {
   int sockfd;
   while (1) {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
+    if (sockfd <= 0) {
       perror("Socket creation failed");
       sleep(1);
       continue;
@@ -173,7 +173,7 @@ struct election_msg receive_election_message() {
 
   fprintf(stderr, "rcv_election_message accept\n");
   new_sock = accept(read_listen_sockfd, (struct sockaddr *)&addr, &addr_len);
-  if (new_sock < 0) {
+  if (new_sock <= 0) {
     perror("\t Accept failed\n");
     msg.elected = -1;
     return msg;
