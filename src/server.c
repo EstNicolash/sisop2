@@ -16,7 +16,8 @@ int main() {
   read_server_config();
   set_servers();
   setup_election_socket(ELECTION_PORT);
-  start_election();
+
+  fprintf(stderr, "server: election_manager_thread\n");
   pthread_t election_manager_thread;
   if (pthread_create(&election_manager_thread, NULL, election_manager, NULL) !=
       0) {
@@ -24,6 +25,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
+  fprintf(stderr, "server: listen_heartbeat_thread\n");
   pthread_t listen_hearbeat_thread;
   if (pthread_create(&listen_hearbeat_thread, NULL, listen_for_heartbeat,
                      NULL) != 0) {
@@ -31,6 +33,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
+  fprintf(stderr, "server: send_heartbeat_thread\n");
   pthread_t send_heartbeat_thread;
   if (pthread_create(&send_heartbeat_thread, NULL, send_heartbeat, NULL) != 0) {
     perror("Thread creation failed\n");
@@ -39,6 +42,7 @@ int main() {
 
   int replica_server_fd = setup_replica_socket();
 
+  fprintf(stderr, "server: replica_thread\n");
   pthread_t replica_thread;
   if (pthread_create(&replica_thread, NULL, listen_for_replica_connection,
                      &replica_server_fd) != 0) {
@@ -46,12 +50,15 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
+  start_election();
+  fprintf(stderr, "server: SETUP FINISHED\n");
   pthread_mutex_lock(&election_mutex);
   while (server_id != elected_server) {
     pthread_cond_wait(&election_cond, &election_mutex);
   }
   pthread_mutex_unlock(&election_mutex);
 
+  fprintf(stderr, "server: ELECTED\n");
   /*Primary Replica*/
 
   for (int i = 0; i < server_id; i++) {

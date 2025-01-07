@@ -14,7 +14,8 @@ static struct message_queue *create_node(int type,
     return NULL;
   }
   new_node->msg_type = type;
-  strncpy(new_node->msg_info, msg_info, MAX_PAYLOAD_SIZE);
+  // strncpy(new_node->msg_info, msg_info, MAX_PAYLOAD_SIZE);
+  snprintf(new_node->msg_info, MAX_FILENAME_SIZE, "%s", msg_info);
   new_node->next = NULL;
   return new_node;
 }

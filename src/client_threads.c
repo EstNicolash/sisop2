@@ -20,7 +20,8 @@ void *rcv_propagation_thread(void *arg) {
     if (rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt) == -1)
       continue;
 
-    strncpy(msg, pkt._payload, MAX_PAYLOAD_SIZE);
+    //  strncpy(msg, pkt._payload, MAX_PAYLOAD_SIZE);
+    snprintf(msg, MAX_PAYLOAD_SIZE, "%s", pkt._payload);
     fprintf(stderr, "rcv_propagation_thread msg: %s", msg);
     msg_queue_insert_start(S_PROPAGATE, msg);
   }

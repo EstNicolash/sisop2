@@ -75,7 +75,8 @@ FileInfo get_file_info(const char file_name[MAX_FILENAME_SIZE]) {
     return info;
   }
 
-  strncpy(info.filename, file_name, MAX_FILENAME_SIZE);
+  // strncpy(info.filename, file_name, MAX_FILENAME_SIZE);
+  snprintf(info.filename, MAX_FILENAME_SIZE, "%s", file_name);
   info.file_size = st.st_size;
   info.last_modified = st.st_mtime;
   info.last_accessed = st.st_atime;
@@ -123,7 +124,9 @@ FileInfo *list_files(const char dir_name[MAX_FILENAME_SIZE], int *file_count) {
       return NULL;
     }
 
-    strncpy(files[*file_count].filename, entry->d_name, MAX_FILENAME_SIZE);
+    //  strncpy(files[*file_count].filename, entry->d_name, MAX_FILENAME_SIZE);
+    snprintf(files[*file_count].filename, MAX_FILENAME_SIZE, "%s",
+             entry->d_name);
     files[*file_count].file_size = st.st_size;
     files[*file_count].last_modified = st.st_mtime;
     files[*file_count].last_accessed = st.st_atime;

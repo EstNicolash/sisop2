@@ -118,8 +118,9 @@ int client_send_id(int sockfd, char client_id[MAX_FILENAME_SIZE]) {
   if (rcv_message(sockfd, OK, 0, &pkt) != 0)
     return -1;
 
-  strncpy(next_server_ip, pkt._payload, 256);
+  // strncpy(next_server_ip, pkt._payload, 256);
 
+  snprintf(next_server_ip, 256, "%s", pkt._payload);
   return 0;
 }
 
@@ -234,7 +235,8 @@ int client_delete_file(int sockfd, char filename[MAX_FILENAME_SIZE]) {
     return -1;
   }
 
-  strncpy(delete_msg._payload, filename, MAX_FILENAME_SIZE);
+  // strncpy(delete_msg._payload, filename, MAX_FILENAME_SIZE);
+  snprintf(delete_msg._payload, MAX_FILENAME_SIZE, "%s", filename);
   delete_msg.length = strlen(delete_msg._payload);
 
   // printf("file name\n");
@@ -359,6 +361,7 @@ void add_to_timed_ignore_list(const char *file) {
 
   for (int i = 0; i < MAX_IGNORE_FILES; i++) {
     if (timed_ignore_files[i].file[0] == '\0') {
+
       strncpy(timed_ignore_files[i].file, file,
               sizeof(timed_ignore_files[i].file) - 1);
       timed_ignore_files[i].file[sizeof(timed_ignore_files[i].file) - 1] = '\0';

@@ -14,7 +14,8 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
   if (rcv_message(sockfd, C_SEND_ID, 0, &rcv_pkt) != 0)
     return -1;
 
-  strncpy(user_id, rcv_pkt._payload, MAX_FILENAME_SIZE);
+  snprintf(user_id, MAX_FILENAME_SIZE, "%s", rcv_pkt._payload);
+  // strncpy(user_id, rcv_pkt._payload, MAX_FILENAME_SIZE);
 
   packet pkt = create_packet(OK, 0, 0, server_ips[next_server],
                              strnlen(server_ips[next_server], 256));
@@ -32,19 +33,22 @@ int server_handles_upload(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
   uint32_t size = 0;
   char *file_buffer = receive_file(sockfd, &size, &metadata);
 
+  fprintf(stderr, "file: [%s]\n", metadata.filename);
   save_file(metadata.filename, user_id, file_buffer, size);
 
   if (propagate_to_client(sockfd, user_id, metadata.filename) != 0) {
     fprintf(stderr, "Error propagating to client\n");
   }
-  
-  for(int i =0; i < server_id; i++){
-  	propagate_to_backup(replica_sockets[i], user_id, metadata.filename);
+
+  for (int i = 0; i < server_id; i++) {
+
+    fprintf(stderr, "Propagating to: [%d]\n", replica_sockets[i]);
+    propagate_to_backup(replica_sockets[i], user_id, metadata.filename);
   }
-  
 
   free(file_buffer);
 
+  fprintf(stderr, "Sendig ack\n");
   // SEND ACK END
   ack = create_packet(OK, C_UPLOAD, 0, "ok", 2);
   send_message(sockfd, ack);
@@ -107,10 +111,10 @@ int server_handles_delete(int sockfd, const char user_id[MAX_FILENAME_SIZE]) {
 
   delete_file(file_path);
   propagate_delete(sockfd, user_id, delete_pkt._payload);
-  for(int i = 0; i < server_id; i++){
-  	propagate_delete_to_backup(replica_sockets[i], user_id, delete_pkt._payload);
+  for (int i = 0; i < server_id; i++) {
+    propagate_delete_to_backup(replica_sockets[i], user_id,
+                               delete_pkt._payload);
   }
-  
 
   packet ack = create_packet(OK, C_DELETE, 0, "ok", 2);
 
