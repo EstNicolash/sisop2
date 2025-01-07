@@ -16,7 +16,6 @@ int main() {
   read_server_config();
   set_servers();
   setup_election_socket(ELECTION_PORT);
-  start_election();
 
   fprintf(stderr, "server: election_manager_thread\n");
   pthread_t election_manager_thread;
@@ -51,6 +50,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
+  start_election();
   fprintf(stderr, "server: SETUP FINISHED\n");
   pthread_mutex_lock(&election_mutex);
   while (server_id != elected_server) {
