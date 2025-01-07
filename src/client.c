@@ -32,9 +32,12 @@ int main(int argc, char *argv[]) {
 
   printf("Client start\n");
 
-  strncpy(client_id, argv[1], BUFFER_SIZE);
-  strncpy(server_ip, argv[2], 256);
-  strncpy(server_port, argv[3], BUFFER_SIZE);
+  snprintf(client_id, BUFFER_SIZE, "%s", argv[1]);
+  snprintf(server_ip, 256, "%s", argv[2]);
+  snprintf(server_port, BUFFER_SIZE, "%s", argv[3]);
+  // strncpy(client_id, argv[1], BUFFER_SIZE);
+  // strncpy(server_ip, argv[2], 256);
+  // strncpy(server_port, argv[3], BUFFER_SIZE);
 
   printf("Client ID: %s\n", client_id);
   printf("Server IP: %s\n", server_ip);

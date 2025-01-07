@@ -14,7 +14,8 @@ int server_handles_id(int sockfd, char user_id[MAX_FILENAME_SIZE]) {
   if (rcv_message(sockfd, C_SEND_ID, 0, &rcv_pkt) != 0)
     return -1;
 
-  strncpy(user_id, rcv_pkt._payload, MAX_FILENAME_SIZE);
+  snprintf(user_id, MAX_FILENAME_SIZE, "%s", rcv_pkt._payload);
+  // strncpy(user_id, rcv_pkt._payload, MAX_FILENAME_SIZE);
 
   packet pkt = create_packet(OK, 0, 0, server_ips[next_server],
                              strnlen(server_ips[next_server], 256));

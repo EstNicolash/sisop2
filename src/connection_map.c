@@ -25,8 +25,9 @@ void connection_map_insert(const char user_id[MAX_FILENAME_SIZE],
 
   int index = hash_function(user_id);
   ConnectionInfo info = {0};
-  strncpy(info.user_id, user_id, MAX_FILENAME_SIZE);
+  // strncpy(info.user_id, user_id, MAX_FILENAME_SIZE);
 
+  snprintf(info.user_id, MAX_FILENAME_SIZE, "%s", user_id);
   fprintf(stderr, "Connection map: %d,%d,%d\n", normal_sockfd,
           propagation_read_sockfd, propagation_write_sockfd);
   info.normal_sockfd = normal_sockfd;

@@ -85,7 +85,8 @@ void *replica_handler(void *arg) {
 
       /**0.reate directory**/
       fprintf(stderr, "\t replica_handler: UPLOAD\n");
-      strncpy(user_id, received_packet._payload, MAX_FILENAME_SIZE);
+      // strncpy(user_id, received_packet._payload, MAX_FILENAME_SIZE);
+      snprintf(user_id, MAX_FILENAME_SIZE, "%s", received_packet._payload);
       create_directory(user_id);
 
       /**1.SEND ACK 1**/
@@ -165,7 +166,8 @@ int propagate_to_backup(int sockfd, const char user_id[MAX_FILENAME_SIZE],
                         const char filename[MAX_FILENAME_SIZE]) {
 
   packet msg = create_packet(C_UPLOAD, 0, 0, "upload", 6);
-  strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
+  // strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
+  snprintf(msg._payload, MAX_FILENAME_SIZE, "%s", user_id);
   msg.length = strlen(msg._payload);
 
   char file_path[MAX_PAYLOAD_SIZE * 2];
@@ -213,7 +215,8 @@ int propagate_delete_to_backup(int sockfd,
                                const char filename[MAX_FILENAME_SIZE]) {
 
   packet msg = create_packet(C_DELETE, 0, 0, "a", 1);
-  strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
+  // strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
+  snprintf(msg._payload, MAX_FILENAME_SIZE, "%s", user_id);
   msg.length = strlen(msg._payload);
 
   if (send_message(sockfd, msg) != 0) {
