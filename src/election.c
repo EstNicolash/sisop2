@@ -141,6 +141,8 @@ void send_election_message(struct election_msg msg) {
 
   while (is_sended == 0) {
 
+    fprintf("send_election_message loop");
+
     sleep(1);
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
