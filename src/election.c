@@ -78,7 +78,7 @@ void set_servers() {
   char local_ip[256];
   get_local_ip(local_ip);
 
-  fprintf(stderr, "Local IP:%s\n", local_ip);
+  fprintf(stderr, "set_servers Local IP:%s\n", local_ip);
 
   for (int i = 0; i < total_servers; i++) {
     alive_servers[i] = 0;
@@ -90,9 +90,9 @@ void set_servers() {
   next_server = (server_id + 1) % total_servers;
 
   pthread_mutex_unlock(&election_mutex);
-  fprintf(stderr, "servers setted\n");
-  fprintf(stderr, "server_id:%d\n", server_id);
-  fprintf(stderr, "next_server:%d\n", next_server);
+  fprintf(stderr, "set_servers servers setted\n");
+  fprintf(stderr, "set_servers server_id:%d\n", server_id);
+  fprintf(stderr, "set_servers next_server:%d\n", next_server);
 }
 
 void setup_election_socket(int port) {
@@ -129,7 +129,7 @@ void setup_election_socket(int port) {
 void send_election_message(struct election_msg msg) {
   struct sockaddr_in addr;
 
-  fprintf(stderr, "send message function\n");
+  fprintf(stderr, "send_election_message start\n");
   addr.sin_family = AF_INET;
   addr.sin_port = htons(ELECTION_PORT);
   inet_pton(AF_INET, server_ips[next_server], &addr.sin_addr);
@@ -152,7 +152,7 @@ void send_election_message(struct election_msg msg) {
     break;
   }
 
-  fprintf(stderr, "sending message\n");
+  fprintf(stderr, "send_election_message sending message\n");
   packet pkt = create_packet(S_ELECTION, 0, 0, "", 0);
   memcpy(pkt._payload, &msg, sizeof(struct election_msg));
   pkt.length = sizeof(struct election_msg);
@@ -160,6 +160,8 @@ void send_election_message(struct election_msg msg) {
   if (send_message(sockfd, pkt) != 0) {
     perror("Failed to send election message\n");
   }
+
+  fprintf(stderr, "send_election_message end\n");
   close(sockfd);
 }
 
@@ -169,29 +171,31 @@ struct election_msg receive_election_message() {
   struct election_msg msg;
   int new_sock;
 
-  fprintf(stderr, "rcv election message\n");
+  fprintf(stderr, "rcv_election_message accept\n");
   new_sock = accept(read_listen_sockfd, (struct sockaddr *)&addr, &addr_len);
   if (new_sock < 0) {
-    perror("Accept failed");
+    perror("\t Accept failed\n");
     msg.elected = -1;
     return msg;
   }
 
   packet response;
 
-  fprintf(stderr, "rcv message\n");
+  fprintf(stderr, "rcv_election_message rcv\n");
+  fprintf(stderr, "\t rcv message\n");
   if (rcv_message(new_sock, S_ELECTION, 0, &response) != 0) {
-    perror("Failed to receive election message\n");
+    perror("\t Failed to receive election message\n");
     msg.elected = -1;
   }
 
   memcpy(&msg, response._payload, sizeof(struct election_msg));
   close(new_sock);
+  fprintf(stderr, "rcv_election_message end\n");
   return msg;
 }
 
 void start_election() {
-  fprintf(stderr, "start election\n");
+  fprintf(stderr, "start election start\n");
   struct election_msg msg;
 
   pthread_mutex_lock(&election_mutex);
@@ -200,7 +204,7 @@ void start_election() {
   is_participating = 0;
   send_election_message(msg);
   pthread_mutex_unlock(&election_mutex);
-  fprintf(stderr, "start election sended\n");
+  fprintf(stderr, "start election end\n");
 }
 
 void *handle_election() {
@@ -306,6 +310,7 @@ void *send_heartbeat(void *arg) {
       next_server = (next_server + 1) % total_servers;
       pthread_mutex_unlock(&election_mutex);
 
+      fprintf(stderr, "send_heartbeat: next_server updated\n");
       start_election();
 
       continue;

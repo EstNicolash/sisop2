@@ -16,12 +16,12 @@ void *rcv_propagation_thread(void *arg) {
 
   while (is_rcv_propagation_running == 0) {
     char msg[MAX_PAYLOAD_SIZE];
-    fprintf(stderr, "test rcvprop\n");
+    fprintf(stderr, "rcv_propagation_thread: receiveing rcv_message\n");
     if (rcv_message(prop_read_sockfd, S_PROPAGATE, 0, &pkt) == -1)
       continue;
 
     strncpy(msg, pkt._payload, MAX_PAYLOAD_SIZE);
-    fprintf(stderr, "msg: %s", msg);
+    fprintf(stderr, "rcv_propagation_thread msg: %s", msg);
     msg_queue_insert_start(S_PROPAGATE, msg);
   }
 
@@ -128,7 +128,7 @@ void monitor_sync_dir() {
       struct inotify_event *event = (struct inotify_event *)p;
       char file_path[MAX_PAYLOAD_SIZE * 2];
       snprintf(file_path, sizeof(file_path), "%s/%s", SYNC_DIR, event->name);
-
+      fprintf(stderr, "\t monitor: %s\n", file_path);
       if (is_inotify_running != 0)
         break;
 
@@ -137,11 +137,10 @@ void monitor_sync_dir() {
 
       if (event->mask & IN_MODIFY || event->mask & IN_CREATE) {
 
-        fprintf(stderr, "MODIFY or CREATE: %s\n", event->name);
-        fprintf(stderr, "status: %d,%d\n", is_timed_ignored(file_path),
-                is_ignored(file_path));
+        fprintf(stderr, "\t monitor[MODIFY or CREATE]: %s\n", event->name);
+        fprintf(stderr, "\t is_timed_ignored and is_ignored: [%d,%d]\n",
+                is_timed_ignored(file_path), is_ignored(file_path));
         if (is_timed_ignored(file_path) == 0 && is_ignored(file_path) == 0) {
-          fprintf(stderr, "aaaaa\n");
           msg_queue_insert(C_UPLOAD, file_path);
           add_to_timed_ignore_list(file_path); // Prevent re-trigger
         }
