@@ -148,6 +148,7 @@ void *replica_handler(void *arg) {
       char file_path[MAX_PAYLOAD_SIZE * 2];
 
       snprintf(file_path, sizeof(file_path), "%s/%s", user_id, msg._payload);
+      fprintf(stderr, "delete file: %s\n", file_path);
       delete_file(file_path);
       fprintf(stderr, "\t replica_handler: sending final ack\n");
       send_message(sockfd, ack);
@@ -235,6 +236,7 @@ int propagate_delete_to_backup(int sockfd,
 
   packet to_delete =
       create_packet(S_PROPAGATE, C_DELETE, 0, filename, strlen(filename));
+  fprintf(stderr, "backup delete filename: %s", filename);
   if (send_message(sockfd, to_delete) != 0) {
     fprintf(stderr, "error or equal checksum\n");
     return -1;
