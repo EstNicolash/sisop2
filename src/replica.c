@@ -129,6 +129,9 @@ void *replica_handler(void *arg) {
 
     if (received_packet.type == C_DELETE) {
 
+      snprintf(user_id, MAX_FILENAME_SIZE, "%s", received_packet._payload);
+      create_directory(user_id);
+
       fprintf(stderr, "\t replica_handler: DELETE\n");
       packet ack = create_packet(OK, C_DELETE, 0, "ok", 2);
 
@@ -218,7 +221,7 @@ int propagate_delete_to_backup(int sockfd,
   packet msg = create_packet(C_DELETE, 0, 0, "a", 1);
   // strncpy(msg._payload, user_id, MAX_FILENAME_SIZE);
   snprintf(msg._payload, MAX_FILENAME_SIZE, "%s", user_id);
-  msg.length = strlen(msg._payload);
+  msg.length = strlen(user_id);
 
   if (send_message(sockfd, msg) != 0) {
     perror("Error sending propagate msg\n");
