@@ -120,10 +120,20 @@ int send_metadata(int sockfd, const char filename[MAX_FILENAME_SIZE]) {
 
   FileInfo file_info = get_file_info(filename);
   file_info.file_size = total_size;
-  char *base_name = basename(file_info.filename);
-  // strncpy(file_info.filename, base_name, MAX_FILENAME_SIZE);
-  snprintf(file_info.filename, MAX_FILENAME_SIZE, "%s", base_name);
+  
 
+
+   char temp_filename[MAX_FILENAME_SIZE];
+   strncpy(temp_filename, file_info.filename, MAX_FILENAME_SIZE);
+
+    // basename modifica a string de entrada, então passamos a cópia
+    char *base_name = basename(temp_filename);  // basename vai modificar temp_filename
+
+    // Usar snprintf para garantir que o nome do arquivo não ultrapasse o limite
+    snprintf(file_info.filename, MAX_FILENAME_SIZE, "%s", base_name);
+
+    printf("Base Name: %s\n", file_info.filename);
+  
   packet metadata_pkt = create_packet(METADATA, 0, total_size, "file", 4);
   memcpy(metadata_pkt._payload, &file_info, sizeof(FileInfo));
   metadata_pkt.length = sizeof(FileInfo);
