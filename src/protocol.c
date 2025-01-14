@@ -177,7 +177,7 @@ int send_file(int sockfd, const char file_name[MAX_FILENAME_SIZE]) {
     }
 
     total += bytes_sent;
-    printf("Sent %ld bytes Toal:%ld\n", bytes_sent, total);
+    // printf("Sent %ld bytes Toal:%ld\n", bytes_sent, total);
   }
 
   // printf("end seq\n");
@@ -250,8 +250,8 @@ char *receive_file(int socket_fd, uint32_t *out_total_size,
     memcpy(file_data + received_size, buffer, bytes_received);
     received_size += bytes_received;
 
-    printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
-           received_size);
+    // printf("Received %ld bytes, total received = %u bytes\n", bytes_received,
+    //      received_size);
   }
 
   // Receive the EOF packet
